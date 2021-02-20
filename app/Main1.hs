@@ -1,4 +1,5 @@
-module Main where
+
+module Main1 where
 
 import Lib
 

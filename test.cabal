@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5a57a0ae916c177f1563e860c0d21e9cd54039fcba338ac489fe82bf926a6d6e
+-- hash: f0e0dd2a618e5d868be1a2f8611d36eea3cc7ea5a882ff752397998f2a06f57f
 
 name:           test
 version:        0.1.0.0
@@ -37,21 +37,41 @@ library
     , base >=4.7 && <5
     , hs-conllu
     , punkt
+    , text
   default-language: Haskell2010
 
-executable test-exe
-  main-is: Main.hs
+executable test-exe1
+  main-is: Main1.hs
   other-modules:
+      Main2
       Paths_test
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is Main1
   build-depends:
       aeson
     , base >=4.7 && <5
     , hs-conllu
     , punkt
     , test
+    , text
+  default-language: Haskell2010
+
+executable test-exe2
+  main-is: Main2.hs
+  other-modules:
+      Main1
+      Paths_test
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is Main2
+  build-depends:
+      aeson
+    , base >=4.7 && <5
+    , hs-conllu
+    , punkt
+    , test
+    , text
   default-language: Haskell2010
 
 test-suite test-test
@@ -68,4 +88,5 @@ test-suite test-test
     , hs-conllu
     , punkt
     , test
+    , text
   default-language: Haskell2010
