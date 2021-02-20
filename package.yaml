@@ -21,10 +21,10 @@ description:         Please see the README on GitHub at <https://github.com/arad
 
 dependencies:
 - base >= 4.7 && < 5
+- text
 - hs-conllu
 - punkt
 - aeson
-- text
 
 library:
   source-dirs: src
