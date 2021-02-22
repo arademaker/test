@@ -28,7 +28,7 @@ source-repository head
 library
   exposed-modules:
       Lib
-      JSONread
+      DHBB-JSON
   other-modules:
       Paths_test
   hs-source-dirs:
