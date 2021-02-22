@@ -47,24 +47,24 @@ compact ls = do
 -- just because hs-conllu already depend on it.
 
 digits :: String -> [[Int]]
-digits c = map (\ls -> map read $ tail ls) ms
+digits c = map (map read . tail) ms
   where
     ms = (=~) c "([0-9]+)[ ]+([0-9]+)[ ]*\n" :: [[String]]
 
 
 slice :: Int -> Int -> String -> String
-slice a b = (take (b - a)) . (drop a)
+slice a b = take (b - a) . drop a
 
 getSubStrings :: [[Int]] -> String -> [String]
 getSubStrings [] c = []
 getSubStrings (p:ps) c = as : getSubStrings ps c
   where
-    as = slice (p!!0) (p!!1) c
+    as = slice (head p) (p!!1) c
 
 -- split raw text into sentences based on offsets
 descompact :: [FilePath] -> IO ()
 descompact ls = do
-    content <- readFile $ ls!!0
+    content <- readFile $ head ls
     raw <- readFile $ ls!!1
     let ds = digits content
     let ss = getSubStrings ds raw
