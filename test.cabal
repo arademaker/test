@@ -28,7 +28,8 @@ source-repository head
 library
   exposed-modules:
       Lib
-      DHBB-JSON
+      DHBB_JSON
+      ConlluEntity
   other-modules:
       Paths_test
   hs-source-dirs:

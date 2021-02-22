@@ -1,18 +1,16 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings, DuplicateRecordFields #-}
 
-module JSONread where
-  
+module DHBB_JSON where
+
 import Data.Aeson
 import qualified Data.ByteString.Lazy as B
 import GHC.Generics
-
+import Data.Either
 
 data Paragraph = Paragraph {
   text :: String,
   order :: Int
 } deriving (Show, Generic)
-
-instance FromJSON Paragraph
 
 data Entity = Entity
   { etype :: String
@@ -27,24 +25,15 @@ data Mention = Mention
   , location :: [Int]
   } deriving (Show, Generic)
 
-
 newtype Disambiguation = Disambiguation
   { subtype :: [String]
   } deriving (Show, Generic)
-
-instance FromJSON Disambiguation
-instance FromJSON Mention
-
-instance FromJSON Entity where
-  parseJSON = genericParseJSON  $ defaultOptions {fieldLabelModifier = \x -> if x == "etype" then "type" else x}
 
 data Cargos = Cargos
   { title :: String
   , start :: Int
   , end :: Int
   } deriving (Show, Generic)
-
-instance FromJSON Cargos
 
 data Document = Document
  { title :: String,
@@ -58,10 +47,37 @@ data Document = Document
    entities :: [Entity]
 }  deriving (Show, Generic)
 
+instance FromJSON Disambiguation
+instance ToJSON Disambiguation
 
+instance FromJSON Mention
+instance ToJSON Mention
+
+instance FromJSON Paragraph
+instance ToJSON Paragraph
+
+instance FromJSON Cargos
+instance ToJSON Cargos
+
+customEntity = defaultOptions {fieldLabelModifier = \x -> if x == "type" then "etype" else x }
+instance FromJSON Entity where
+  parseJSON = genericParseJSON  $ defaultOptions {fieldLabelModifier = \x -> if x == "etype" then "type" else x}
+instance ToJSON Entity where
+  toJSON = genericToJSON customEntity
+  toEncoding = genericToEncoding customEntity
+
+customDocument = defaultOptions {fieldLabelModifier = \x -> if x == "cargos-p" then "cargos_p" else x}
 instance FromJSON Document where
   parseJSON =
     genericParseJSON $ defaultOptions {fieldLabelModifier = \x -> if x == "cargos_p" then "cargos-p" else x}
+instance ToJSON Document where
+  toJSON = genericToJSON customDocument
+  toEncoding = genericToEncoding customDocument
 
+emptyDocument :: Document
+emptyDocument = Document "" "" "" [] [] "" "" [] []
+
+readJSON :: FilePath -> IO Document
 readJSON path = do
-  (eitherDecode <$> B.readFile path) :: IO (Either String Document)
+  doc <- (eitherDecode <$> B.readFile path) :: IO (Either String Document)
+  return $ fromRight emptyDocument doc
