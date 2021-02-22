@@ -26,6 +26,7 @@ dependencies:
 - punkt
 - filepath
 - aeson
+- bytestring
 
 library:
   source-dirs: src
