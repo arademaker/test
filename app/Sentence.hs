@@ -8,11 +8,14 @@ import Text.ParserCombinators.ReadP ( char, many, munch, readP_to_S, string, Rea
 import Data.Char ( isDigit, isSpace )
 import System.FilePath ( takeExtension )
 import Text.Regex.TDFA ( (=~) )
+import Data.Text (pack, unpack)
+import NLP.Punkt (find_breaks, split_sentences)
 
 msg =
   " Usage: \n\
-  \  test-sentence -d offset-file raw-file   => descompact offset into stdout \n\
-  \  test-sentence -c sent-file  => compact sent into stdout\n "
+  \  test-sentence -d offset-file raw-file   => one sentence per line into stdout \n\
+  \  test-sentence -c sent-file              => offsets into the stdout\n\
+  \  test-sentence -s raw-file               => offsets into the stdout \n"
 
 usage = putStrLn msg
 exit = exitWith ExitSuccess
@@ -20,6 +23,7 @@ exit = exitWith ExitSuccess
 parse ["-h"]    = usage >> exit
 parse ("-c":ls) = compact ls >> exit
 parse ("-d":ls) = descompact ls >> exit
+parse ("-s":ls) = segment ls >> exit
 parse ls        = usage >> exit
 
 
@@ -69,6 +73,19 @@ descompact ls = do
     let ds = digits content
     let ss = getSubStrings ds raw
     putStr $ intercalate "\n" ss ++ "\n"
+
+
+segment :: [FilePath] -> IO ()
+segment ls = do
+  content <- readFile $ head ls
+  let ss = map (\x -> show (fst x) ++ " " ++ show (snd x)) $ find_breaks $ pack content
+  putStr $ intercalate "\n" ss ++ "\n"
+
+segment_test :: [FilePath] -> IO ()
+segment_test ls = do
+  content <- readFile $ head ls
+  mapM_ print (split_sentences $ pack content)
+
 
 main :: IO ()
 main = getArgs >>= parse
