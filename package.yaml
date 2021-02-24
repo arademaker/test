@@ -32,6 +32,17 @@ library:
   source-dirs: src
 
 executables:
+  test-conllu:
+    main:                ConlluProcess.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -main-is Sentence
+    dependencies:
+    - test
+
   test-sentence:
     main:                Sentence.hs
     source-dirs:         app

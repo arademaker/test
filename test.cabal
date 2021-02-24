@@ -29,7 +29,6 @@ library
   exposed-modules:
       Lib
       DHBB_JSON
-      ConlluEntity
   other-modules:
       Paths_test
   hs-source-dirs:
@@ -45,12 +44,34 @@ library
                 , bytestring
   default-language: Haskell2010
 
+executable test-conllu
+  main-is: ConlluProcess.hs
+  other-modules:
+      Main1
+      Main2
+      Sentence
+      Paths_test
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is ConlluProcess
+  build-depends:
+                    aeson
+                , base >=4.7 && <5
+                , filepath
+                , hs-conllu
+                , punkt
+                , regex-tdfa >= 1.3.1.0
+                , test
+                , text
+  default-language: Haskell2010
+
 executable test-exe1
   main-is: Main1.hs
   other-modules:
       Main2
       Sentence
       Paths_test
+      ConlluProcess
   hs-source-dirs:
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is Main1
@@ -71,6 +92,7 @@ executable test-exe2
       Main1
       Sentence
       Paths_test
+      ConlluProcess
   hs-source-dirs:
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is Main2
@@ -91,6 +113,7 @@ executable test-sentence
       Main1
       Main2
       Paths_test
+      ConlluProcess
   hs-source-dirs:
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is Sentence

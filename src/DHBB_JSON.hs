@@ -4,8 +4,10 @@ module DHBB_JSON where
 
 import Data.Aeson
 import qualified Data.ByteString.Lazy as B
+import qualified Data.ByteString.Lazy.Char8 as C
 import GHC.Generics
 import Data.Either
+import Data.List
 
 data Paragraph = Paragraph {
   text :: String,
@@ -81,3 +83,6 @@ readJSON :: FilePath -> IO Document
 readJSON path = do
   doc <- (eitherDecode <$> B.readFile path) :: IO (Either String Document)
   return $ fromRight emptyDocument doc
+
+strEntity :: [Entity] -> String
+strEntity l = "[" ++ intercalate "," (map (C.unpack . encode) l) ++ "]"

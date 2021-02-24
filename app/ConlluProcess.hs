@@ -1,5 +1,6 @@
-module ConlluEntity where
+module ConlluProcess where
 
+-- Provavelmente não precisarei de todos esses imports. Tirarei quando o codigo estiver pronto
 import Conllu.IO
 import Conllu.DeprelTagset
 import Conllu.Diff
@@ -43,15 +44,15 @@ isSubrange (b1,e1) (b2,e2) = b1 >= b2 && e1 <= e2
 entINsent :: Entity -> Sent -> Bool -- Verify if entity belongs to sent
 entINsent e s = any (`isSubrange` sentRange s) (entRanges e)
 
--- metaUpdate :: Sent -> Entity -> Sent
--- metaUpdate s e = Sent (_meta s ++ [("entitys",encode e)]) (_words s)
+metaUpdate :: Sent -> [Entity] -> Sent -- Update Sent metadata with entities
+metaUpdate s e = Sent (_meta s ++ [("entitys",strEntity e)]) (_words s)
 
 
 
+-- To Be Continued..
 
 
-
-
+main = putStrLn "Breve módulo de manipulação conllu"
 
 
 ------ Older implementation (might rescue some functions)
