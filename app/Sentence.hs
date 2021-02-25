@@ -2,9 +2,10 @@
 module Sentence where
 
 import System.Environment ( getArgs )
-import System.Exit ( ExitCode(ExitSuccess), exitWith )
+import System.Exit ( exitFailure, exitSuccess )
 import Data.List ( intercalate )
 import Text.ParserCombinators.ReadP ( char, many, munch, readP_to_S, string, ReadP )
+import Text.Printf (printf)
 import Data.Char ( isDigit, isSpace )
 import System.FilePath ( takeExtension )
 import Text.Regex.TDFA ( (=~) )
@@ -18,13 +19,12 @@ msg =
   \  test-sentence -s raw-file               => offsets into the stdout \n"
 
 usage = putStrLn msg
-exit = exitWith ExitSuccess
 
-parse ["-h"]    = usage >> exit
-parse ("-c":ls) = compact ls >> exit
-parse ("-d":ls) = descompact ls >> exit
-parse ("-s":ls) = segment ls >> exit
-parse ls        = usage >> exit
+parse ["-h"]    = usage >> exitSuccess
+parse ("-c":ls) = compact ls >> exitSuccess
+parse ("-d":ls) = descompact ls >> exitSuccess
+parse ("-s":ls) = segment ls >> exitSuccess
+parse ls        = usage >> exitFailure
 
 
 -- to compact a file with one sentence per line, we need to read the
@@ -72,14 +72,14 @@ descompact ls = do
     raw <- readFile $ ls!!1
     let ds = digits content
     let ss = getSubStrings ds raw
-    putStr $ intercalate "\n" ss ++ "\n"
+    putStr $ unlines ss 
 
 
 segment :: [FilePath] -> IO ()
 segment ls = do
   content <- readFile $ head ls
-  let ss = map (\x -> show (fst x) ++ " " ++ show (snd x)) $ find_breaks $ pack content
-  putStr $ intercalate "\n" ss ++ "\n"
+  let ss = map (uncurry (printf "%i %i")) $ find_breaks $ pack content
+  putStr $ unlines ss
 
 segment_test :: [FilePath] -> IO ()
 segment_test ls = do
