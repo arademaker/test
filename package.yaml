@@ -26,20 +26,19 @@ dependencies:
 - punkt
 - filepath
 - aeson
-- bytestring
 
 library:
   source-dirs: src
 
 executables:
-  test-conllu:
-    main:                ConlluProcess.hs
+  test-NLUJson:
+    main:                NLUJson.hs
     source-dirs:         app
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    - -main-is Sentence
+    - -main-is NLUJson
     dependencies:
     - test
 
