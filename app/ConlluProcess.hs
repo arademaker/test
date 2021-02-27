@@ -1,9 +1,24 @@
 module ConlluProcess where
 
-import Conllu.Type ( Sent(..), CW(_misc), AW )
+import Conllu.IO
+import Conllu.Type
 import Data.Maybe
 import NLUJson
 import Text.Regex.TDFA
+import System.Environment
+import System.Exit
+
+
+msg =
+  " Usage: \n\
+  \  test-ConlluProcess -m JSON-file CONLLU-file out-CONLLU-file => merged CONLLU file\n\
+  \  test-sentence -c CONLLU-file                                => compare NER and POS\n"
+
+usage = putStrLn msg
+
+parse ["-h"]    = usage >> exitSuccess
+parse ("-m":ls) = merge ls >> exitSuccess
+parse ls        = usage >> exitFailure
 
 type Range = (Int,Int)
 
@@ -32,4 +47,13 @@ entINsent e s = any (`isSubrange` sentRange s) (entRanges e)
 metaUpdate :: Sent -> [Entity] -> Sent -- Update Sent metadata with entities
 metaUpdate s e = Sent (_meta s ++ [("entitys",strEntity e)]) (_words s)
 
-main = print "" -- Temporary to run the build
+merge [pj,pc,po] = do
+    js <- readJSON pj
+    (sents:_) <- readConllu pc
+    let ents = entities js
+    let ncl = map (\s -> metaUpdate s $ filter (`entINsent` s) ents) sents
+    writeConlluFile po ncl
+
+
+main :: IO ()
+main = getArgs >>= parse
