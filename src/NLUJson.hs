@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings, DuplicateRecordFields #-}
 
-module DHBB_JSON where
+module NLUJson where
 
 import Data.Aeson
 import qualified Data.ByteString.Lazy as B

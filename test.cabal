@@ -28,7 +28,7 @@ source-repository head
 library
   exposed-modules:
       Lib
-      DHBB_JSON
+      NLUJson
   other-modules:
       Paths_test
   hs-source-dirs:
@@ -44,8 +44,8 @@ library
                 , bytestring
   default-language: Haskell2010
 
-executable test-NLUJson
-  main-is: NLUJson.hs
+executable test-ConlluProcess
+  main-is: ConlluProcess.hs
   other-modules:
       Main1
       Main2
@@ -53,7 +53,7 @@ executable test-NLUJson
       Paths_test
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is NLUJson
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is ConlluProcess
   build-depends:
                     aeson
                 , base >=4.7 && <5

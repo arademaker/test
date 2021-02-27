@@ -1,8 +1,8 @@
-module NLUJson where
+module ConlluProcess where
 
-import Conllu.Type
+import Conllu.Type ( Sent(..), CW(_misc), AW )
 import Data.Maybe
-import DHBB_JSON
+import NLUJson
 import Text.Regex.TDFA
 
 type Range = (Int,Int)
@@ -31,3 +31,5 @@ entINsent e s = any (`isSubrange` sentRange s) (entRanges e)
 
 metaUpdate :: Sent -> [Entity] -> Sent -- Update Sent metadata with entities
 metaUpdate s e = Sent (_meta s ++ [("entitys",strEntity e)]) (_words s)
+
+main = print "" -- Temporary to run the build
