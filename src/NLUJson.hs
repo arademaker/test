@@ -61,17 +61,16 @@ instance ToJSON Paragraph
 instance FromJSON Cargos
 instance ToJSON Cargos
 
-customEntity = defaultOptions {fieldLabelModifier = \x -> if x == "type" then "etype" else x }
+customEntity = defaultOptions {fieldLabelModifier = \x -> if x == "etype" then "type" else x}
 instance FromJSON Entity where
-  parseJSON = genericParseJSON  $ defaultOptions {fieldLabelModifier = \x -> if x == "etype" then "type" else x}
+  parseJSON = genericParseJSON customEntity
 instance ToJSON Entity where
   toJSON = genericToJSON customEntity
   toEncoding = genericToEncoding customEntity
 
-customDocument = defaultOptions {fieldLabelModifier = \x -> if x == "cargos-p" then "cargos_p" else x}
+customDocument = defaultOptions {fieldLabelModifier = \x -> if x == "cargos_p" then "cargos-p" else x}
 instance FromJSON Document where
-  parseJSON =
-    genericParseJSON $ defaultOptions {fieldLabelModifier = \x -> if x == "cargos_p" then "cargos-p" else x}
+  parseJSON = genericParseJSON customDocument
 instance ToJSON Document where
   toJSON = genericToJSON customDocument
   toEncoding = genericToEncoding customDocument
@@ -84,5 +83,8 @@ readJSON path = do
   doc <- (eitherDecode <$> B.readFile path) :: IO (Either String Document)
   return $ fromRight emptyDocument doc
 
-strEntity :: [Entity] -> String
-strEntity l = "[" ++ intercalate "," (map (C.unpack . encode) l) ++ "]"
+entTOstr :: [Entity] -> String
+entTOstr l = "[" ++ intercalate "," (map (C.unpack . encode) l) ++ "]"
+
+strTOent :: String -> [Entity]
+strTOent s = fromRight [] (eitherDecode (C.pack s) :: Either String [Entity])
