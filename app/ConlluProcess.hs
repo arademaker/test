@@ -11,8 +11,8 @@ import System.Exit
 
 msg =
   " Usage: \n\
-  \  test-ConlluProcess -m JSON-file CONLLU-file out-CONLLU-file => merged CONLLU file\n\
-  \  test-sentence -c CONLLU-file                                => NER and POS check to stdout\n"
+  \  test-conllu -m JSON-file CONLLU-file CoNLLU-file\n\
+  \  test-conllu -c CONLLU-file  => NER and POS check to stdout\n"
 
 usage = putStrLn msg
 
@@ -20,6 +20,7 @@ parse ["-h"]    = usage >> exitSuccess
 parse ("-m":ls) = merge ls >> exitSuccess
 parse ("-c":ls) = check ls >> exitSuccess
 parse ls        = usage >> exitFailure
+
 
 type Range = (Int,Int)
 

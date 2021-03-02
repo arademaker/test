@@ -26,12 +26,14 @@ dependencies:
 - punkt
 - filepath
 - aeson
+- bytestring
+- regex-tdfa
 
 library:
   source-dirs: src
 
 executables:
-  test-ConlluProcess:
+  test-conllu:
     main:                ConlluProcess.hs
     source-dirs:         app
     ghc-options:
@@ -53,28 +55,6 @@ executables:
     dependencies:
     - test
   
-  test-exe1:
-    main:                Main1.hs
-    source-dirs:         app
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    - -main-is Main1
-    dependencies:
-    - test
-
-  test-exe2:
-    main:                Main2.hs
-    source-dirs:         app
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    - -main-is Main2
-    dependencies:
-    - test
-    
 tests:
   test-test:
     main:                Spec.hs
