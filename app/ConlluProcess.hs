@@ -28,7 +28,7 @@ readRange t = (read a, read b) where
   (_,_,_,[a,b]) = (=~) t "TokenRange=([0-9]+):([0-9]+)" :: (String,String,String,[String])
 
 cwRange :: CW AW -> Range -- Take range of element
-cwRange w = readRange $ fromJust $ _misc w
+cwRange w = maybe (-1,0) readRange $ _misc w 
 
 sentRange :: Sent -> Range -- Take tange of sentence
 sentRange s = (fst $ cwRange $ head w, snd $ cwRange $ last w) where w = _words s
@@ -48,6 +48,9 @@ entINsent e s = any (`isSubrange` sentRange s) (entRanges e)
 metaUpdate :: Sent -> [Entity] -> Sent -- Update Sent metadata with entities
 metaUpdate s e = Sent (_meta s ++ [("entitys",entTOstr e)]) (_words s)
 
+isMember :: (Foldable t, Eq a) => a -> t a -> Bool
+isMember n = foldr (\x -> (||) (n==x)) False
+
 merge :: [FilePath] -> IO ()
 merge [pj,pc,po] = do
   js <- readJSON pj
@@ -56,18 +59,23 @@ merge [pj,pc,po] = do
   let ncl = map (\s -> metaUpdate s $ filter (`entINsent` s) ents) sents
   writeConlluFile po ncl
 
-entCheck:: Entity -> [CW AW] -> IO()
-entCheck e l = print 0
+entCheck:: Entity -> [CW AW] -> Bool
+entCheck e l = res where
+  er = head $ entRanges e
+  nl = filter (\c -> isSubrange (cwRange c) er) l
+  nodes = map _id nl
+  roots = filter (\c -> isMember (_h c) nodes) nl where _h = _head . fromJust . _rel
+  res = length roots <= 1
 
-sentCheck :: Sent -> IO()
-sentCheck s = mapM_ (`entCheck` w) ent where
+sentCheck :: Sent -> [Entity]
+sentCheck s = filter (`entCheck` w) ent where
   ent = strTOent $ snd $ last $ _meta s
   w = _words s
 
 check :: [FilePath] -> IO ()
 check (p:_) = do
   c <- readConlluFile p
-  mapM_ sentCheck c
+  print $ map sentCheck c
 
 main :: IO ()
 main = getArgs >>= parse
