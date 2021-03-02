@@ -51,6 +51,9 @@ metaUpdate s e = Sent (_meta s ++ [("entitys",entTOstr e)]) (_words s)
 isMember :: (Foldable t, Eq a) => a -> t a -> Bool
 isMember n = foldr (\x -> (||) (n==x)) False
 
+cwHead :: CW AW -> ID 
+cwHead n = maybe (SID 0) _head $ _rel n
+
 merge :: [FilePath] -> IO ()
 merge [pj,pc,po] = do
   js <- readJSON pj
@@ -64,7 +67,7 @@ entCheck e l = res where
   er = head $ entRanges e
   nl = filter (\c -> isSubrange (cwRange c) er) l
   nodes = map _id nl
-  roots = filter (\c -> isMember (_h c) nodes) nl where _h = _head . fromJust . _rel
+  roots = filter (\c -> isMember (cwHead c) nodes) nl
   res = length roots <= 1
 
 sentCheck :: Sent -> [Entity]
