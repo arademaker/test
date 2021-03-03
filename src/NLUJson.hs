@@ -9,8 +9,6 @@ import GHC.Generics
 import Data.Either
 import Data.List
 
-----------------------------------------------------------------------------------------------------
-
 data Usage = Usage
   { text_units :: Int
   , text_characters :: Int
@@ -19,8 +17,6 @@ data Usage = Usage
 
 instance FromJSON Usage
 instance ToJSON Usage
-
-----------------------------------------------------------------------------------------------------
 
 data Ent = Ent
   { etp :: String
@@ -38,8 +34,6 @@ instance FromJSON Ent where
 instance ToJSON Ent where
   toJSON = genericToJSON customEnt
   toEncoding = genericToEncoding customEnt
-
-----------------------------------------------------------------------------------------------------
 
 data Argument = Argument
   { atext :: String
@@ -60,8 +54,6 @@ instance ToJSON Argument where
   toJSON = genericToJSON customArgument
   toEncoding = genericToEncoding customArgument
 
-----------------------------------------------------------------------------------------------------
-
 data Relation = Relation
   { rtype :: String
   , sentence :: String
@@ -78,8 +70,6 @@ instance ToJSON Relation where
   toJSON = genericToJSON customRelation
   toEncoding = genericToEncoding customRelation
 
-----------------------------------------------------------------------------------------------------
-
 data Mention = Mention
   { mtext :: String 
   , location :: [Int]
@@ -95,19 +85,16 @@ instance ToJSON Mention where
   toJSON = genericToJSON customMention
   toEncoding = genericToEncoding customMention
 
-----------------------------------------------------------------------------------------------------
-
 newtype Disambiguation = Disambiguation
   {subtype :: [String]} deriving (Show, Generic)
 
 instance FromJSON Disambiguation
 instance ToJSON Disambiguation
 
-----------------------------------------------------------------------------------------------------
 
 data Entity = Entity
-  { etype :: String ------------------------------------ type
-  , etext :: String --------------------------- text
+  { etype :: String 
+  , etext :: String 
   , mentions :: [Mention]
   , disambiguation :: Disambiguation
   } deriving (Show, Generic)
@@ -124,7 +111,6 @@ instance ToJSON Entity where
   toJSON = genericToJSON customEntity
   toEncoding = genericToEncoding customEntity
 
-----------------------------------------------------------------------------------------------------
 
 data Document = Document
   { usage :: Usage
@@ -135,8 +121,6 @@ data Document = Document
 
 instance FromJSON Document
 instance ToJSON Document
-
-----------------------------------------------------------------------------------------------------
 
 
 emptyDocument :: Document
