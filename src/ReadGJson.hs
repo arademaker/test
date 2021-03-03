@@ -1,73 +1,146 @@
+{-# LANGUAGE DeriveGeneric #-}
+
+module ReadGJson where
+
 import Data.Aeson
-import GHC.Generics ( Generic )
+
+import qualified Data.ByteString.Lazy as B
+import qualified Data.ByteString.Lazy.Char8 as C
+import GHC.Generics
+import Data.Either
+import Data.List
 
 
+ 
 data Properties = Properties
-    { SIRE_ENTITY_LEVEL :: String,
-      SIRE_ENTITY_SUBTYPE :: String,
-      SIRE_MENTION_CLASS :: String,
-      SIRE_ENTITY_CLASS :: String,
-      SIRE_MENTION_ROLE :: String,
-      SIRE_MENTION_TYPE :: String
-    } deriving (Show, Generic)
+    { sire_ENTITY_LEVEL   :: String,
+      sire_ENTITY_SUBTYPE :: String,
+      sire_MENTION_CLASS  :: String,
+      sire_ENTITY_CLASS   :: String,
+      sire_MENTION_ROLE   :: String,
+      sire_MENTION_TYPE   :: String
+    } deriving (Show,Generic)
+
+customProperties :: Options
+customProperties = defaultOptions {fieldLabelModifier = aux} where
+  aux x | x == "sire_MENTION_ROLE"   = "SIRE_MENTION_ROLE"
+        | x == "sire_ENTITY_SUBTYPE" = "SIRE_ENTITY_SUBTYPE"
+        | x == "sire_MENTION_TYPE"   = "SIRE_MENTION_TYPE"
+        | x == "sire_MENTION_CLASS"  = "SIRE_MENTION_CLASS"
+        | x == "sire_ENTITY_LEVEL"   = "SIRE_ENTITY_LEVEL"
+        | x == "sire_ ENTITY_CLASS"  = "SIRE_ENTITY_CLASS"
+        | otherwise = x
+
+instance FromJSON Properties where
+  parseJSON = genericParseJSON customProperties
+instance ToJSON Properties where
+  toJSON = genericToJSON customProperties
+  toEncoding = genericToEncoding customProperties
+
 
 data Mentions = Mentions
-    { id :: String,
-      properties :: Properties
-      type :: String,
-      begin :: Int,
-      end :: Int,
-      inCoref :: Bool
+    { menId      :: String,
+      properties :: Properties,
+      menType    :: String,
+      menBegin   :: Int,
+      menEnd     :: Int,
+      inCoref    :: Bool
     } deriving (Show, Generic)
 
+customMentions :: Options
+customMentions = defaultOptions {fieldLabelModifier = aux} where
+  aux x | x == "menId"    = "id"
+        | x == "menType"  = "type"
+        | x == "menBegin" = "begin"
+        | x == "menEnd"   = "end"
+        | otherwise = x
+
+instance FromJSON Mentions where
+  parseJSON = genericParseJSON customMentions
+instance ToJSON Mentions where
+  toJSON = genericToJSON customMentions
+  toEncoding = genericToEncoding customMentions
+
+
 data Tokens = Tokens
-    { id :: String,
-      begin :: Int,
-      end :: Int,
-      text :: String,
+    { tokId      :: String,
+      tokBegin   :: Int,
+      tokEnd     :: Int,
+      tokText    :: String,
       whiteSpace :: Bool
     } deriving (Show, Generic)
 
+customTokens :: Options
+customTokens = defaultOptions {fieldLabelModifier = aux} where
+  aux x | x == "tokId"    = "id"
+        | x == "tokBegin" = "begin"
+        | x == "tokEnd"   = "end"
+        | x == "tokText"  = "text"
+        | otherwise = x
+
+instance FromJSON Tokens where
+  parseJSON = genericParseJSON customTokens
+instance ToJSON Tokens where
+  toJSON = genericToJSON customTokens
+  toEncoding = genericToEncoding customTokens
+
+
 data Sentences = Sentences
-    { id :: String,
-      begin :: Int,
-      end :: Int,
-      text :: String,
-      tokens :: [Tokens]
+    { senId    :: String,
+      senBegin :: Int,
+      senEnd   :: Int,
+      senText  :: String,
+      tokens   :: [Tokens]
     } deriving (Show, Generic)
+
+customSent :: Options
+customSent = defaultOptions {fieldLabelModifier = aux} where
+  aux x | x == "senId"    = "id"
+        | x == "senBegin" = "begin"
+        | x == "senEnd"   = "end"
+        | x == "senText"  = "text"
+        | otherwise = x
+
+instance FromJSON Sentences where
+  parseJSON = genericParseJSON customSent
+instance ToJSON Sentences where
+  toJSON = genericToJSON customSent
+  toEncoding = genericToEncoding customSent
+
 
 data Document = Document
-    { id :: String,
-      name :: String,
-      createdDate :: Int,
-      version :: Int,
-      text :: String,
-      docLength :: Int,
-      language :: String,
-      status :: String,
-      modifiedDate :: Int,
-      documentSet :: [String],
+    { docId         :: String,
+      name          :: String,
+      createdDate   :: Int,
+      version       :: Int,
+      docText       :: String,
+      docLength     :: Int,
+      language      :: String,
+      status        :: String,
+      modifiedDate  :: Int,
+      documentSet   :: [String],
       preannotation :: [String],
-      sentences :: [Sentences],
-      mentions :: [Mentions],
-      relations :: [String],
-      corefs :: [String],
-      typeResolved :: Bool,
-      userResolved :: Bool
+      sentences     :: [Sentences],
+      mentions      :: [Mentions],
+      relations     :: [String],
+      corefs        :: [String],
+      typeResolved  :: Bool,
+      userResolved  :: Bool
     } deriving (Show, Generic)
 
-instance FromJSON Document
-instance ToJSON Document
+customDoc :: Options
+customDoc = defaultOptions {fieldLabelModifier = aux} where
+  aux x | x == "docId" = "id"
+        | x == "docText" = "text"
+        | otherwise = x
 
-instance FromJSON Sentences
-instance ToJSON Sentences
+instance FromJSON Document where
+  parseJSON = genericParseJSON customDoc
+instance ToJSON Document where
+  toJSON = genericToJSON customDoc
+  toEncoding = genericToEncoding customDoc
 
-instance FromJSON Tokens
-instance ToJSON Tokens
+readJSON :: FilePath -> IO (Either String Document)
+readJSON path = (eitherDecode <$> B.readFile path) :: IO (Either String Document)
 
-instance FromJSON Mentions
-instance ToJSON Mentions
-
-instance FromJSON Properties
-instance ToJSON Properties
-
+ 
