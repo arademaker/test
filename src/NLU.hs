@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings, DuplicateRecordFields #-}
 
-module NLUJson where
+module NLU where
   
 import Data.Aeson
 import qualified Data.ByteString.Lazy as B

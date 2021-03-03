@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 877a57e9506afb9bec6a0fb3aa0e19f315951979c0a42c8203851800ac1ba462
+-- hash: a4e07a8b13777cd681cc6c7eb186091389ce8b4a1707dce1305ef8da7efeae9b
 
 name:           test
 version:        0.1.0.0
@@ -28,7 +28,7 @@ source-repository head
 library
   exposed-modules:
       Lib
-      NLUJson
+      NLU
   other-modules:
       Paths_test
   hs-source-dirs:

@@ -3,7 +3,7 @@ module ConlluProcess where
 import Conllu.IO
 import Conllu.Type
 import Data.Maybe
-import NLUJson
+import NLU
 import Text.Regex.TDFA
 import System.Environment
 import System.Exit
