@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings, DuplicateRecordFields #-}
 
 module NLUJson where
-
+  
 import Data.Aeson
 import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString.Lazy.Char8 as C
@@ -9,74 +9,138 @@ import GHC.Generics
 import Data.Either
 import Data.List
 
-data Paragraph = Paragraph {
-  text :: String,
-  order :: Int
-} deriving (Show, Generic)
+----------------------------------------------------------------------------------------------------
 
-data Entity = Entity
-  { etype :: String
-  , text :: String
-  , mentions :: [Mention]
-  , disambiguation :: Disambiguation
-  , count :: Int
-  } deriving (Show,Generic)
+data Usage = Usage
+  { text_units :: Int
+  , text_characters :: Int
+  , features :: Int
+  } deriving (Show, Generic)
+
+instance FromJSON Usage
+instance ToJSON Usage
+
+----------------------------------------------------------------------------------------------------
+
+data Ent = Ent
+  { etp :: String
+  , txt :: String
+  } deriving (Show, Generic)
+
+customEnt :: Options
+customEnt = defaultOptions {fieldLabelModifier = aux} where
+  aux x | x == "etp" = "type"
+        | x == "txt" = "text"
+        | otherwise = x
+
+instance FromJSON Ent where
+  parseJSON = genericParseJSON customEnt
+instance ToJSON Ent where
+  toJSON = genericToJSON customEnt
+  toEncoding = genericToEncoding customEnt
+
+----------------------------------------------------------------------------------------------------
+
+data Argument = Argument
+  { atext :: String
+  , aloc :: [Int] 
+  , aent :: [Ent]
+  } deriving (Show, Generic)
+
+customArgument :: Options
+customArgument = defaultOptions {fieldLabelModifier = aux} where
+  aux x | x == "atext" = "text"
+        | x == "aloc" = "location"
+        | x == "aent" = "entities"
+        | otherwise = x
+
+instance FromJSON Argument where
+  parseJSON = genericParseJSON customArgument
+instance ToJSON Argument where
+  toJSON = genericToJSON customArgument
+  toEncoding = genericToEncoding customArgument
+
+----------------------------------------------------------------------------------------------------
+
+data Relation = Relation
+  { rtype :: String
+  , sentence :: String
+  , score :: Float
+  , arguments :: [Argument]
+  } deriving (Show, Generic)
+
+customRelation :: Options
+customRelation = defaultOptions {fieldLabelModifier = \x -> if x == "rtype" then "type" else x}
+
+instance FromJSON Relation where
+  parseJSON = genericParseJSON customRelation
+instance ToJSON Relation where
+  toJSON = genericToJSON customRelation
+  toEncoding = genericToEncoding customRelation
+
+----------------------------------------------------------------------------------------------------
 
 data Mention = Mention
-  { text :: String
+  { mtext :: String 
   , location :: [Int]
+  , confidence :: Float
   } deriving (Show, Generic)
+
+customMention :: Options
+customMention = defaultOptions {fieldLabelModifier = \x -> if x == "mtext" then "text" else x}
+
+instance FromJSON Mention where
+  parseJSON = genericParseJSON customMention
+instance ToJSON Mention where
+  toJSON = genericToJSON customMention
+  toEncoding = genericToEncoding customMention
+
+----------------------------------------------------------------------------------------------------
 
 newtype Disambiguation = Disambiguation
-  { subtype :: [String]
-  } deriving (Show, Generic)
-
-data Cargos = Cargos
-  { title :: String
-  , start :: Int
-  , end :: Int
-  } deriving (Show, Generic)
-
-data Document = Document
- { title :: String,
-   natureza :: String,
-   sexo :: String,
-   cargos :: [String],
-   cargos_p :: [Cargos],
-   filename :: String,
-   text :: String,
-   paragraphs :: [Paragraph],
-   entities :: [Entity]
-}  deriving (Show, Generic)
+  {subtype :: [String]} deriving (Show, Generic)
 
 instance FromJSON Disambiguation
 instance ToJSON Disambiguation
 
-instance FromJSON Mention
-instance ToJSON Mention
+----------------------------------------------------------------------------------------------------
 
-instance FromJSON Paragraph
-instance ToJSON Paragraph
+data Entity = Entity
+  { etype :: String ------------------------------------ type
+  , etext :: String --------------------------- text
+  , mentions :: [Mention]
+  , disambiguation :: Disambiguation
+  } deriving (Show, Generic)
 
-instance FromJSON Cargos
-instance ToJSON Cargos
+customEntity :: Options
+customEntity = defaultOptions {fieldLabelModifier = aux} where
+  aux x | x == "etype" = "type"
+        | x == "etext" = "text"
+        | otherwise = x
 
-customEntity = defaultOptions {fieldLabelModifier = \x -> if x == "etype" then "type" else x}
 instance FromJSON Entity where
   parseJSON = genericParseJSON customEntity
 instance ToJSON Entity where
   toJSON = genericToJSON customEntity
   toEncoding = genericToEncoding customEntity
 
-customDocument = defaultOptions {fieldLabelModifier = \x -> if x == "cargos_p" then "cargos-p" else x}
-instance FromJSON Document where
-  parseJSON = genericParseJSON customDocument
-instance ToJSON Document where
-  toJSON = genericToJSON customDocument
-  toEncoding = genericToEncoding customDocument
+----------------------------------------------------------------------------------------------------
+
+data Document = Document
+  { usage :: Usage
+  , relations ::[Relation]
+  , language :: String
+  , entities :: [Entity]
+  } deriving (Show, Generic)
+
+instance FromJSON Document
+instance ToJSON Document
+
+----------------------------------------------------------------------------------------------------
+
 
 emptyDocument :: Document
-emptyDocument = Document "" "" "" [] [] "" "" [] []
+emptyDocument = Document (Usage 0 0 0) [] "" []
 
 readJSON :: FilePath -> IO Document
 readJSON path = do
