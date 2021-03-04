@@ -33,7 +33,7 @@ customProperties = defaultOptions {fieldLabelModifier = aux} where
         | x == "sire_MENTION_TYPE"   = "SIRE_MENTION_TYPE"
         | x == "sire_MENTION_CLASS"  = "SIRE_MENTION_CLASS"
         | x == "sire_ENTITY_LEVEL"   = "SIRE_ENTITY_LEVEL"
-        | x == "sire_ ENTITY_CLASS"  = "SIRE_ENTITY_CLASS"
+        | x == "sire_ENTITY_CLASS"   = "SIRE_ENTITY_CLASS"
         | otherwise = x
 
 instance FromJSON Properties where
