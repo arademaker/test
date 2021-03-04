@@ -1,13 +1,11 @@
 module ConlluProcess where
 
-import Conllu.IO
+import Text.Regex.TDFA ( (=~) )
+import System.Environment ( getArgs )
+import System.Exit ( exitFailure, exitSuccess )
+import Conllu.IO ( readConlluFile, writeConlluFile )
 import Conllu.Type
-import Data.Maybe
 import NLU
-import Text.Regex.TDFA
-import System.Environment
-import System.Exit
-import Data.Either
 
 
 msg =
