@@ -3,12 +3,17 @@
 module ReadGJson where
 
 import Data.Aeson
-
+    ( eitherDecode,
+      genericParseJSON,
+      defaultOptions,
+      genericToEncoding,
+      genericToJSON,
+      FromJSON(parseJSON),
+      Options(fieldLabelModifier),
+      ToJSON(toJSON, toEncoding) )
 import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString.Lazy.Char8 as C
-import GHC.Generics
-import Data.Either
-import Data.List
+import GHC.Generics ( Generic )
 
 
  
@@ -140,7 +145,7 @@ instance ToJSON Document where
   toJSON = genericToJSON customDoc
   toEncoding = genericToEncoding customDoc
 
-readJSON :: FilePath -> IO (Either String Document)
-readJSON path = (eitherDecode <$> B.readFile path) :: IO (Either String Document)
+readGJson :: FilePath -> IO (Either String Document)
+readGJson path = (eitherDecode <$> B.readFile path) :: IO (Either String Document)
 
  
