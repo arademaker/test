@@ -123,13 +123,8 @@ instance FromJSON Document
 instance ToJSON Document
 
 
-emptyDocument :: Document
-emptyDocument = Document (Usage 0 0 0) [] "" []
-
-readJSON :: FilePath -> IO Document
-readJSON path = do
-  doc <- (eitherDecode <$> B.readFile path) :: IO (Either String Document)
-  return $ fromRight emptyDocument doc
+readJSON :: FilePath -> IO (Either String Document)
+readJSON path = (eitherDecode <$> B.readFile path) :: IO (Either String Document)
 
 entTOstr :: [Entity] -> String
 entTOstr l = "[" ++ intercalate "," (map (C.unpack . encode) l) ++ "]"
