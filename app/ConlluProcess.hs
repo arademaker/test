@@ -8,19 +8,6 @@ import Conllu.Type
 import NLU
 
 
-msg =
-  " Usage: \n\
-  \  test-conllu -m JSON-file CONLLU-file CoNLLU-file\n\
-  \  test-conllu -c CONLLU-file  => NER and POS check to stdout\n"
-
-help = putStrLn msg
-
-parse ["-h"]    = help >> exitSuccess
-parse ("-m":ls) = merge ls >> exitSuccess
-parse ("-c":ls) = check ls >> exitSuccess
-parse ls        = help >> exitFailure
-
-
 type Range = (Int,Int)
 
 readRange :: String -> Range -- Read _misc string to range
@@ -81,6 +68,22 @@ check :: [FilePath] -> IO ()
 check (p:_) = do
   c <- readConlluFile p
   print $ foldl (\r s -> r ++ sentCheck s) [] c
-   
+
+
+-- main interface
+
+msg =
+  " Usage: \n\
+  \  test-conllu -m JSON-file CONLLU-file CoNLLU-file\n\
+  \  test-conllu -c CONLLU-file  => NER and POS check to stdout\n"
+
+help = putStrLn msg
+
+parse ["-h"]    = help >> exitSuccess
+parse ("-m":ls) = merge ls >> exitSuccess
+parse ("-c":ls) = check ls >> exitSuccess
+parse ls        = help >> exitFailure
+
+    
 main :: IO ()
 main = getArgs >>= parse
