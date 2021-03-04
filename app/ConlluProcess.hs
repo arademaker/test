@@ -19,7 +19,7 @@ help = putStrLn msg
 
 parse ["-h"]    = help >> exitSuccess
 parse ("-m":ls) = merge ls >> exitSuccess
--- parse ("-c":ls) = check ls >> exitSuccess
+parse ("-c":ls) = check ls >> exitSuccess
 parse ls        = help >> exitFailure
 
 
@@ -66,23 +66,23 @@ merge [jspath,clpath,outpath] = do
   sents <- readConlluFile clpath
   jsonCheck js sents outpath
 
--- entCheck:: Entity -> [CW AW] -> Bool
--- entCheck e l = res where
---   er = head $ entRanges e
---   nl = filter (\c -> isSubrange (cwRange c) er) l
---   nodes = map _id nl
---   roots = filter (\c -> isMember (cwHead c) nodes) nl
---   res = length roots <= 1
+entCheck:: Entity -> [CW AW] -> Bool
+entCheck e l = res where
+  er = head $ entRanges e
+  nl = filter (\c -> isSubrange (cwRange c) er) l
+  nodes = map _id nl
+  roots = filter (\c -> not $ isMember (cwHead c) nodes) nl
+  res = length roots > 1
 
--- sentCheck :: Sent -> [Entity]
--- sentCheck s = filter (`entCheck` w) ent where
---   ent = strTOent $ snd $ last $ _meta s
---   w = _words s
+sentCheck :: Sent -> [Entity]
+sentCheck s = filter (`entCheck` w) ent where
+  ent = strTOent $ snd $ last $ _meta s
+  w = _words s
 
--- check :: [FilePath] -> IO ()
--- check (p:_) = do
---   c <- readConlluFile p
---   print $ map sentCheck c
-
+check :: [FilePath] -> IO ()
+check (p:_) = do
+  c <- readConlluFile p
+  print $ foldl (\r s -> r ++ sentCheck s) [] c
+   
 main :: IO ()
 main = getArgs >>= parse
