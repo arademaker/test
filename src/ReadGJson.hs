@@ -18,10 +18,10 @@ import GHC.Generics ( Generic )
 
  
 data Properties = Properties
-    { sire_ENTITY_LEVEL   :: String,
+    { sire_ENTITY_LEVEL   :: Maybe String,
       sire_ENTITY_SUBTYPE :: String,
       sire_MENTION_CLASS  :: String,
-      sire_ENTITY_CLASS   :: String,
+      sire_ENTITY_CLASS   :: Maybe String,
       sire_MENTION_ROLE   :: String,
       sire_MENTION_TYPE   :: String
     } deriving (Show,Generic)
