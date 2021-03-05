@@ -124,7 +124,7 @@ instance ToJSON Document
 
 
 readJSON :: FilePath -> IO (Either String Document)
-readJSON path = (eitherDecode <$> B.readFile path) :: IO (Either String Document)
+readJSON path = fmap eitherDecode (B.readFile path) :: IO (Either String Document)
 
 entTOstr :: [Entity] -> String
 entTOstr l = "[" ++ intercalate "," (map (C.unpack . encode) l) ++ "]"

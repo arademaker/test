@@ -10,17 +10,24 @@ import NLU
 
 type Range = (Int,Int)
 
-readRange :: String -> Range -- Read _misc string to range
-readRange t = (read a, read b) where
-  (_,_,_,[a,b]) = (=~) t "TokenRange=([0-9]+):([0-9]+)" :: (String,String,String,[String])
+-- corrigir !!!
+readRange :: String -> Maybe Range 
+readRange t = Just (read a, read b)
+  where
+    (_,_,_,[a,b]) = (=~) t "TokenRange=([0-9]+):([0-9]+)" :: (String,String,String,[String])
 
-cwRange :: CW AW -> Range -- Take range of element
+-- Take range of element
+cwRange :: CW AW -> Range 
 cwRange w = maybe (-1,0) readRange $ _misc w 
 
-sentRange :: Sent -> Range -- Take tange of sentence
-sentRange s = (fst $ cwRange $ head w, snd $ cwRange $ last w) where w = _words s
+-- Take tange of sentence
+sentRange :: Sent -> Range 
+sentRange s = (fst $ cwRange $ head w, snd $ cwRange $ last w)
+  where
+    w = _words s
 
-mentionRange :: Mention -> Range -- Rake ranges of a mention
+-- Rake ranges of a mention
+mentionRange :: Mention -> Range 
 mentionRange (Mention _ [b,e] _) = (b,e)
 
 entRanges :: Entity -> [Range] -- Take ranges of entity
@@ -29,7 +36,8 @@ entRanges e = map mentionRange $ mentions e
 isSubrange :: Range -> Range -> Bool -- Verify if range is subrange of other
 isSubrange (b1,e1) (b2,e2) = b1 >= b2 && e1 <= e2
 
-entINsent :: Entity -> Sent -> Bool -- Verify if entity belongs to sent
+-- Verify if entity belongs to sent
+entINsent :: Entity -> Sent -> Bool 
 entINsent e s = any (`isSubrange` sentRange s) (entRanges e)
 
 metaUpdate :: Sent -> [Entity] -> Sent -- Update Sent metadata with entities
@@ -41,15 +49,18 @@ isMember n = foldr (\x -> (||) (n==x)) False
 cwHead :: CW AW -> ID 
 cwHead n = maybe (SID 0) _head $ _rel n
 
-jsonCheck (Left _) _ _ = putStrLn "JSON inválido"
-jsonCheck (Right js) sents outpath = writeConlluFile outpath ncl where
-  ncl = map (\s -> metaUpdate s $ filter (`entINsent` s) (entities js)) sents
+addJson (Left _) _ _ = putStrLn "JSON inválido"
+addJson (Right js) sents outpath = writeConlluFile outpath ncl
+  where
+    ncl = map (\s -> metaUpdate s $ filter (`entINsent` s) (entities js)) sents
 
 merge :: [FilePath] -> IO ()
-merge [jspath,clpath,outpath] = do
+merge [jspath, clpath, outpath] = do
   js <- readJSON jspath
   sents <- readConlluFile clpath
-  jsonCheck js sents outpath
+  addJson js sents outpath
+
+-- como fazer...
 
 entCheck:: Entity -> [CW AW] -> Bool
 entCheck e l = res where
