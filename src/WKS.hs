@@ -1,6 +1,6 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric  #-}
 
-module ReadGJson where
+module WKS where
 
 import Data.Aeson
     ( eitherDecode,
@@ -17,23 +17,25 @@ import GHC.Generics ( Generic )
 
 
  
-data Properties = Properties
-    { sire_ENTITY_LEVEL   :: Maybe String,
-      sire_ENTITY_SUBTYPE :: Maybe String,
-      sire_MENTION_CLASS  :: Maybe String,
-      sire_ENTITY_CLASS   :: Maybe String,
-      sire_MENTION_ROLE   :: Maybe String,
-      sire_MENTION_TYPE   :: Maybe String
-    } deriving (Show,Generic)
+data Properties =
+  Properties
+    { entity_level :: Maybe String
+    , entity_subtype :: Maybe String
+    , mention_class :: Maybe String
+    , entity_class :: Maybe String
+    , mention_role :: Maybe String
+    , mention_type :: Maybe String
+    }
+  deriving (Show, Generic)
 
 customProperties :: Options
 customProperties = defaultOptions {fieldLabelModifier = aux} where
-  aux x | x == "sire_MENTION_ROLE"   = "SIRE_MENTION_ROLE"
-        | x == "sire_ENTITY_SUBTYPE" = "SIRE_ENTITY_SUBTYPE"
-        | x == "sire_MENTION_TYPE"   = "SIRE_MENTION_TYPE"
-        | x == "sire_MENTION_CLASS"  = "SIRE_MENTION_CLASS"
-        | x == "sire_ENTITY_LEVEL"   = "SIRE_ENTITY_LEVEL"
-        | x == "sire_ENTITY_CLASS"   = "SIRE_ENTITY_CLASS"
+  aux x | x == "mention_role"   = "SIRE_MENTION_ROLE"
+        | x == "entity_subtype" = "SIRE_ENTITY_SUBTYPE"
+        | x == "mention_type"   = "SIRE_MENTION_TYPE"
+        | x == "mention_class"  = "SIRE_MENTION_CLASS"
+        | x == "entity_level"   = "SIRE_ENTITY_LEVEL"
+        | x == "entity_class"   = "SIRE_ENTITY_CLASS"
         | otherwise = x
 
 instance FromJSON Properties where
