@@ -19,11 +19,11 @@ import GHC.Generics ( Generic )
  
 data Properties = Properties
     { sire_ENTITY_LEVEL   :: Maybe String,
-      sire_ENTITY_SUBTYPE :: String,
-      sire_MENTION_CLASS  :: String,
+      sire_ENTITY_SUBTYPE :: Maybe String,
+      sire_MENTION_CLASS  :: Maybe String,
       sire_ENTITY_CLASS   :: Maybe String,
-      sire_MENTION_ROLE   :: String,
-      sire_MENTION_TYPE   :: String
+      sire_MENTION_ROLE   :: Maybe String,
+      sire_MENTION_TYPE   :: Maybe String
     } deriving (Show,Generic)
 
 customProperties :: Options
@@ -113,6 +113,26 @@ instance ToJSON Sentences where
   toEncoding = genericToEncoding customSent
 
 
+data Corefs = Corefs
+  { corId :: Maybe String, 
+    corProperties :: Maybe Properties, 
+    corMentions :: Maybe [String]
+  } deriving (Show, Generic)
+
+customCorefs :: Options
+customCorefs = defaultOptions {fieldLabelModifier = aux} where
+  aux x | x == "corId"         = "id"
+        | x == "corProperties" = "properties"
+        | x == "corMentions"   = "mentions"
+        | otherwise = x
+
+instance FromJSON Corefs where
+  parseJSON = genericParseJSON customCorefs
+instance ToJSON Corefs where
+  toJSON = genericToJSON customCorefs
+  toEncoding = genericToEncoding customCorefs
+
+
 data Document = Document
     { docId         :: String,
       name          :: String,
@@ -128,7 +148,7 @@ data Document = Document
       sentences     :: [Sentences],
       mentions      :: [Mentions],
       relations     :: [String],
-      corefs        :: [String],
+      corefs        :: [Maybe Corefs],
       typeResolved  :: Bool,
       userResolved  :: Bool
     } deriving (Show, Generic)
