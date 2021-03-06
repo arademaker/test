@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a4e07a8b13777cd681cc6c7eb186091389ce8b4a1707dce1305ef8da7efeae9b
+-- hash: 730bd49ea912b503aad9801170a482aba1afed7d091de1ef6e98ef2393f292af
 
 name:           test
 version:        0.1.0.0
@@ -29,6 +29,7 @@ library
   exposed-modules:
       Lib
       NLU
+      WKS
   other-modules:
       Paths_test
   hs-source-dirs:
@@ -47,8 +48,8 @@ library
 executable test-conllu
   main-is: ConlluProcess.hs
   other-modules:
-      Main1
       Main2
+      NEValidation
       Sentence
       Paths_test
   hs-source-dirs:
@@ -70,12 +71,34 @@ executable test-sentence
   main-is: Sentence.hs
   other-modules:
       ConlluProcess
-      Main1
       Main2
+      NEValidation
       Paths_test
   hs-source-dirs:
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is Sentence
+  build-depends:
+      aeson
+    , base >=4.7 && <5
+    , bytestring
+    , filepath
+    , hs-conllu
+    , punkt
+    , regex-tdfa
+    , test
+    , text
+  default-language: Haskell2010
+
+executable test-validation
+  main-is: NEValidation.hs
+  other-modules:
+      ConlluProcess
+      Main2
+      Sentence
+      Paths_test
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is NEValidation
   build-depends:
       aeson
     , base >=4.7 && <5
