@@ -54,7 +54,19 @@ executables:
     - -main-is Sentence
     dependencies:
     - test
+
+  test-validation:
+    main:                NEValidation.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -main-is NEValidation
+    dependencies:
+    - test
   
+    
 tests:
   test-test:
     main:                Spec.hs
