@@ -3,11 +3,8 @@
 module NLU where
   
 import Data.Aeson
-import qualified Data.ByteString.Lazy as B
-import qualified Data.ByteString.Lazy.Char8 as C
-import GHC.Generics
-import Data.Either
-import Data.List
+import qualified Data.ByteString.Lazy as B (readFile)
+import GHC.Generics ( Generic )
 
 data Usage = Usage
   { text_units :: Int
@@ -125,9 +122,3 @@ instance ToJSON Document
 
 readJSON :: FilePath -> IO (Either String Document)
 readJSON path = fmap eitherDecode (B.readFile path) :: IO (Either String Document)
-
-entTOstr :: [Entity] -> String
-entTOstr l = "[" ++ intercalate "," (map (C.unpack . encode) l) ++ "]"
-
-strTOent :: String -> [Entity]
-strTOent s = fromRight [] (eitherDecode (C.pack s) :: Either String [Entity])

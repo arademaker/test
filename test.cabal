@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.2.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 730bd49ea912b503aad9801170a482aba1afed7d091de1ef6e98ef2393f292af
+-- hash: f47abafed2a720151730327123cb45ae7af8d2555e20025f6b5df3e9c3b07db9
 
 name:           test
 version:        0.1.0.0
@@ -27,6 +27,7 @@ source-repository head
 
 library
   exposed-modules:
+      JsonConlluTools
       Lib
       NLU
       WKS
