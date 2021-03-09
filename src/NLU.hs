@@ -109,6 +109,26 @@ instance ToJSON Entity where
   toEncoding = genericToEncoding customEntity
 
 
+data CleanEntity = CleanEntity
+  { ceText :: String
+  , ceRange :: [Int]
+  , ceConf :: Float
+  } deriving (Show, Generic)
+
+customCleanEntity :: Options
+customCleanEntity = defaultOptions {fieldLabelModifier = aux} where
+  aux x | x == "ceText" = "text"
+        | x == "ceRange" = "range"
+        | x == "ceConf" = "confidence"
+        | otherwise = x
+
+instance FromJSON CleanEntity where
+  parseJSON = genericParseJSON customCleanEntity
+instance ToJSON CleanEntity where
+  toJSON = genericToJSON customCleanEntity
+  toEncoding = genericToEncoding customCleanEntity
+
+
 data Document = Document
   { usage :: Usage
   , relations ::[Relation]

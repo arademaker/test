@@ -1,6 +1,7 @@
 module ConlluProcess where
 
 
+import Data.Maybe
 import System.Environment 
 import System.Exit
 import Conllu.IO
@@ -11,9 +12,11 @@ import JsonConlluTools
 
 
 
--- -- Verify if entity belongs to sent
--- entINsent :: Entity -> Sent -> Bool 
--- entINsent e s = any (`isSubrange` sentRange s) (entRanges e)
+-- -- Verify if CleanEntity belongs to Sent
+cEntINsent :: CleanEntity -> Sent -> Maybe Bool 
+cEntINsent ce s = out where
+  sRange = catMaybes [sentRange s]
+  out = if null sRange then Nothing else Just $ isSubrange (cEntRange ce) (head sRange)
 
 -- metaUpdate :: Sent -> [Entity] -> Sent -- Update Sent metadata with entities
 -- metaUpdate s e = Sent (_meta s ++ [("entitys",entTOstr e)]) (_words s)
@@ -29,11 +32,12 @@ import JsonConlluTools
 --   where
 --     outConll = map (\s -> metaUpdate s $ filter (`entINsent` s) (entities js)) sents
 
--- merge :: [FilePath] -> IO ()
--- merge [jspath, clpath, outpath] = do
---   js <- readJSON jspath
---   sents <- readConlluFile clpath
---   addJson js sents outpath
+merge :: [FilePath] -> IO ()
+merge [jspath, clpath, outpath] = do
+  esd <- readJSON jspath
+  d <- readConlluFile clpath
+  print "oi"
+  -- addJson esd d outpath
 
 -- -- como fazer...
 
