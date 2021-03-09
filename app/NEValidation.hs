@@ -11,7 +11,6 @@ import Data.Ord (comparing)
 
 
 
-
 -- Receive json-WKS json-NLU and check if the texts are the same
 checkTexts :: Either String WKS.Document -> Either String NLU.Document -> Bool
 checkTexts jsonWKS jsonNLU = verify jsonNLU jsonWKS
@@ -52,33 +51,3 @@ reading [wksPath, nluPath] =  do
 
 main :: IO ()
 main = putStrLn "OK"
-
--- msg =
---   " Checking for differences between WKS and NLU. \n\
---   \ Usage: \n\
---   \     NEValidation -t [json-WKS, json-NLU] (check if the texts are the same)"
-
--- help = putStrLn msg
-
--- parse ["-h"]       = help >> exitSuccess
--- parse ("-t":ls)    = checkTexts ls >> exitSuccess
--- parse ls           = help >> exitFailure
-
--- main :: IO ()
--- main = getArgs >>= parse
-
-
--- msg =
---   " Checking for differences between WKS and NLU. \n\
---   \ Usage: \n\
---   \     NEValidation -t [json-WKS, json-NLU] (check if the texts are the same)"
-
--- help = putStrLn msg
-
--- parse ["-h"]       = help >> exitSuccess
--- parse ("-t":ls)    = checkTexts ls >> exitSuccess
--- parse ls           = help >> exitFailure
-
--- main :: IO ()
--- main = getArgs >>= parse
-
