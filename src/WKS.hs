@@ -26,7 +26,7 @@ data Properties =
     , mention_role :: Maybe String
     , mention_type :: Maybe String
     }
-  deriving (Show, Generic)
+  deriving (Eq, Show, Generic)
 
 customProperties :: Options
 customProperties = defaultOptions {fieldLabelModifier = aux} where
@@ -52,7 +52,7 @@ data Mentions = Mentions
       menBegin   :: Int,
       menEnd     :: Int,
       inCoref    :: Bool
-    } deriving (Show, Generic)
+    } deriving (Eq, Show, Generic)
 
 customMentions :: Options
 customMentions = defaultOptions {fieldLabelModifier = aux} where
@@ -61,7 +61,10 @@ customMentions = defaultOptions {fieldLabelModifier = aux} where
         | x == "menBegin" = "begin"
         | x == "menEnd"   = "end"
         | otherwise = x
-
+--instance Eq Mentions where
+--  (Mentions i p t b e c) 
+instance Ord Mentions where
+  compare x y = compare (menBegin x) (menBegin y)
 instance FromJSON Mentions where
   parseJSON = genericParseJSON customMentions
 instance ToJSON Mentions where
@@ -148,7 +151,7 @@ data Document = Document
       documentSet   :: [String],
       preannotation :: [String],
       sentences     :: [Sentences],
-      mentions      :: [Mentions],
+      mentionsWKS   :: [Mentions],
       relations     :: [String],
       corefs        :: [Maybe Corefs],
       typeResolved  :: Bool,
@@ -159,6 +162,7 @@ customDoc :: Options
 customDoc = defaultOptions {fieldLabelModifier = aux} where
   aux x | x == "docId" = "id"
         | x == "docText" = "text"
+        | x == "mentionsWKS" = "mentions"
         | otherwise = x
 
 instance FromJSON Document where

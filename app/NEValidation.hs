@@ -6,6 +6,10 @@ import Data.Aeson
 import System.Exit
 import System.Environment
 import Data.Either
+import Data.List (sortOn)
+import Data.Ord (comparing)
+
+
 
 
 -- Receive [json-WKS, json-NLU] and check if the texts are the same
@@ -16,16 +20,26 @@ checkTexts jsonWKS jsonNLU = verify jsonNLU jsonWKS
       verify _ _ = False
 
 
-catchDiffs :: (WKS.Document -> [Mentions]) -> (NLU.Document -> [Entity]) -> IO Bool
-catchDiffs menNLU menWKS = return True 
+catchDiffs :: [Mentions] -> [Entity] -> [Either Mentions Entity]
+catchDiffs (x:xs) (y:ys)
+    | x == y    = catchDiffs xs ys
+    | x > y     = Right y : catchDiffs (x:xs) ys
+    | otherwise = Left x : catchDiffs xs (y:ys)
 
-getMentions :: (NLU.Document -> [Entity]) -> [Mentions]
+
+sortWKS :: [Mentions] -> [Mentions]
+sortWKS  = sortOn menBegin
+
+sortNLU :: [Entity] -> [Entity]
+sortNLU  = sortOn (head . location . head . mentions)
 
 
-validation :: Either String NLU.Document -> Either String WKS.Document -> IO Bool
-validation (Right jsonNLU) (Right jsonWKS) = do
-    mentionsNLU <- getMentions entities
-    return catchDiffs mentionsWKS entities 
+validation :: Either String NLU.Document -> Either String WKS.Document -> IO [Either Mentions Entity]
+validation (Right jsonNLU) (Right jsonWKS) = catchDiffs menWKS ent 
+    where
+        menWKS = sortWKS (mentionsWKS  jsonWKS)
+        ent    = sortNLU (entities jsonNLU)
+
 
 
 reading :: [FilePath] -> IO Bool
@@ -37,28 +51,7 @@ reading [wksPath, nluPath] =  do
     
 
 
--- future main:
-
--- msg =
---   " Checking for differences between WKS and NLU. \n\
---   \ Usage: \n\
---   \     NEValidation -t [json-WKS, json-NLU] (check if the texts are the same)"
-
--- help = putStrLn msg
-
--- parse ["-h"]       = help >> exitSuccess
--- parse ("-t":ls)    = checkTexts ls >> exitSuccess
--- parse ls           = help >> exitFailure
-
--- main :: IO ()
--- main = getArgs >>= parse
 
 main :: IO ()
 main = putStrLn "OK"
 
-
-
-{-
-wks <- readGJson "/home/ana/dhbb/dhbb-nlp/ner/wks/gt/59612d70-d9aa-11ea-bff2-05ea84f8fa50-40.json"
-js  <- readJSON "/home/ana/dhbb/dhbb-ner/JSON/11576.json"
--}
