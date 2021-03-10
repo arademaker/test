@@ -25,8 +25,8 @@ isSubrange (b1,e1) (b2,e2) = b1 >= b2 && e1 <= e2
 cEntRange :: CleanEntity -> Range
 cEntRange (CleanEntity _ (b:e:_) _) = (b,e)
 
--- entTOstr :: [Entity] -> String
--- entTOstr l = "[" ++ intercalate "," (map (C.unpack . encode) l) ++ "]"
+cEntTOstr :: [CleanEntity] -> String
+cEntTOstr l = "[" ++ intercalate "," (map (C.unpack . encode) l) ++ "]"
 
 -- strTOent :: String -> [Entity]
 -- strTOent s = fromRight [] (eitherDecode (C.pack s) :: Either String [Entity])
