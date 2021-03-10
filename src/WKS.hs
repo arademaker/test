@@ -19,12 +19,12 @@ import GHC.Generics ( Generic )
  
 data Properties =
   Properties
-    { entity_level :: Maybe String
+    { entity_level   :: Maybe String
     , entity_subtype :: Maybe String
-    , mention_class :: Maybe String
-    , entity_class :: Maybe String
-    , mention_role :: Maybe String
-    , mention_type :: Maybe String
+    , mention_class  :: Maybe String
+    , entity_class   :: Maybe String
+    , mention_role   :: Maybe String
+    , mention_type   :: Maybe String
     }
   deriving (Eq, Show, Generic)
 
@@ -47,6 +47,7 @@ instance ToJSON Properties where
 
 data Mentions = Mentions
     { menId      :: String,
+      source     :: Maybe String,
       properties :: Properties,
       menType    :: String,
       menBegin   :: Int,
