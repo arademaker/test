@@ -6,6 +6,7 @@ import Data.Maybe
 import Data.List
 import Data.Aeson
 import Data.Either
+import Control.Applicative
 import Conllu.Type
 import NLU
 
@@ -32,14 +33,12 @@ cEntTOstr l = "[" ++ intercalate "," (map (C.unpack . encode) l) ++ "]"
 -- strTOent s = fromRight [] (eitherDecode (C.pack s) :: Either String [Entity])
 
 cleanEnts :: [Entity] -> [CleanEntity]
-cleanEnts = map aux
-  where
-    aux (Entity _ t (m:_) _) = CleanEntity t (location m) (confidence m)
+cleanEnts = map (\(Entity _ t (m:_) _) -> CleanEntity t (location m) (confidence m))
+
 
 -- Conllu manipulation
-
 readRange :: String -> Maybe Range
-readRange t = if null l then Nothing else aux l
+readRange t = if length l < 2 then Nothing else aux l
   where
     (_,_,_,l) = (=~) t "TokenRange=([0-9]+):([0-9]+)" :: (String,String,String,[String])
     aux (a:b:_) = Just (read a, read b)
@@ -47,13 +46,11 @@ readRange t = if null l then Nothing else aux l
 cwRange :: CW AW -> Maybe Range 
 cwRange w = (>>=) (_misc w) readRange
 
-
 sentRange :: Sent -> Maybe Range
-sentRange s = if length l < 2 then Nothing else aux l
+sentRange (Sent _ w) = liftA2 (\x y -> (fst x,snd y)) b e
   where
-    w = _words s
-    l = catMaybes [cwRange $ head w, cwRange $ last w]
-    aux (a:b:_) = Just (fst a, snd b)
+    [b,e] = [cwRange $ head w, cwRange $ last w]
+
 
 -- cwHead :: CW AW -> ID 
 -- cwHead n = maybe (SID 0) _head $ _rel n
