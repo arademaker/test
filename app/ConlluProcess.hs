@@ -77,6 +77,19 @@ cEntCheck e l = liftA2 aux tokens heads
     heads = headCheck l
     aux cws heads = treeCheck (map _id cws) heads
 
+jsonCheck :: [CleanEntity] -> [CW AW] -> Either String [CleanEntity]
+jsonCheck es cs
+  | null l = Right $ foldl (\l (c,b) -> if b then c:l else l) [] cws
+  | otherwise = Left $ "Conllu inválido: \n Erro no JSON: " ++ head l
+  where
+    el = map (`cEntCheck` cs) es
+    l = lefts el
+    cws = zip es $ rights el
+
+sentCheck :: Sent -> Either String [CleanEntity]
+sentCheck s = (>>=) ents (`jsonCheck` _words s)
+  where
+    ents = strTOcEnts $ snd $ last $ _meta s
 
 -- sentCheck :: Sent -> Either String [CleanEntity]
 -- sentCheck s = (>>=) ent f
