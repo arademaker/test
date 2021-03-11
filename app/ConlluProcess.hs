@@ -3,6 +3,7 @@ module ConlluProcess where
 
 import Data.Maybe
 import Data.Either
+import Control.Applicative
 import System.Environment 
 import System.Exit
 import Conllu.IO
@@ -46,27 +47,36 @@ merge [jspath, clpath, outpath] = do
 -- -- como fazer...
 
 
--- cEntCheck :: CleanEntity -> [CW AW]
 
 
+treeCheck :: [ID] -> [ID] -> Bool
+treeCheck nodes heads = length roots < 2
+  where
+    roots = filter (\i -> not $ isMember i nodes) heads
 
+-- Filter tokens from entity (nothing if original tokens have no range)
+entTokens :: CleanEntity -> [CW AW] -> Either String [CW AW]
+entTokens e l = if length l /= length ranges then invRanges else nl
+  where
+    invRanges = Left "Conllu inválido: \n Ranges dos tokens não encontrados"
+    er = cEntRange e
+    ranges = mapMaybe cwRange l
+    nl = Right $ foldl (\l (c,r) -> if isSubrange r er then c:l else l) [] (zip l ranges)
+    
+headCheck :: [CW AW] -> Either String [ID]
+headCheck ls
+  | length rel /= length ls = Left "Conllu inválido: \n Heads dos tokens não encontrados"
+  | otherwise = Right $ map _head rel
+  where
+    rel = mapMaybe _rel ls
 
+cEntCheck :: CleanEntity -> [CW AW] -> Either String Bool
+cEntCheck e l = liftA2 aux tokens heads
+  where
+    tokens = entTokens e l
+    heads = headCheck l
+    aux cws heads = treeCheck (map _id cws) heads
 
-
-
-
--- cEntCheck :: CleanEntity -> [CW AW] -> Bool
-
--- cEntCheck e l = res where
---   er = cEntRange e
---   nl = filter (\c -> isSubrange (cwRange c) er) l
-
--- cEntCheck e l = res where
---   er = head $ entRanges e
---   nl = filter (\c -> isSubrange (cwRange c) er) l
---   nodes = map _id nl
---   roots = filter (\c -> not $ isMember (cwHead c) nodes) nl
---   res = length roots > 1
 
 -- sentCheck :: Sent -> Either String [CleanEntity]
 -- sentCheck s = (>>=) ent f
