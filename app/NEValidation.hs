@@ -18,13 +18,34 @@ checkTexts jsonWKS jsonNLU = verify jsonNLU jsonWKS
       verify (Right x) (Right y) = analyzed_text x == docText y
       verify _ _ = False
 
+isMatch :: Mentions -> Entity -> Bool
+isMatch m e = (begin m) == $ head (location (mentions e)) and 
+              (end m) == $ last (location (mentions e)) and
+              (type m) == (type e)
 
+isLarger :: Mentions -> Entity -> Bool
+isLarger m e = (begin m) > $ head (location (mentions e))
+
+isSmaller :: Mentions -> Entity -> Bool
+isSmaller m e = (begin m) < $ head (location (mentions e))
+
+ 
+-- Sugestão retornar uma lista de listas [[Match], [Failure], [Mismatch]]
 -- Receive [Mentions of WKS] [Entity of NLU] and return a list of diffs
-catchDiffs :: [Mentions] -> [Entity] -> [Either Mentions Entity]
-catchDiffs (x:xs) (y:ys)
-    | x == y    = catchDiffs xs ys
-    | x > y     = Right y : catchDiffs (x:xs) ys
-    | otherwise = Left x : catchDiffs xs (y:ys)
+-- catchDiffs :: [Mentions] -> [Entity] -> [Either Mentions Entity]
+-- catchDiffs (x:xs) (y:ys)
+--     | isMatch x y = catchDiffs xs ys
+--     | isMaior x y = Right y : catchDiffs (x:xs) ys
+--     | isMenor x y = Left x : catchDiffs xs (y:ys)
+--     | otherwise 
+
+listMatch :: [Mentions] -> [Entity] -> [Entity]
+listMatch (x:xs) (y:ys)
+    | isMatch x y   = y : listMatch xs ys
+    | isLarger x y  = listMatch (x:xs) ys
+    | isSmaller x y = listMatch xs (y:ys)
+
+listFailure :: [Mentions] -> [Entity] -> [Either Mentions Entity]
 
 
 -- Receive [Mentions of WKS] and sort this list
