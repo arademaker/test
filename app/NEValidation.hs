@@ -6,46 +6,44 @@ import Data.Aeson
 import System.Exit
 import System.Environment
 import Data.Either
-import Data.List (sortOn)
+import Data.List
 import Data.Ord (comparing)
 
 
 
 -- Receive json-WKS json-NLU and check if the texts are the same
 checkTexts :: Either String WKS.Document -> Either String NLU.Document -> Bool
-checkTexts jsonWKS jsonNLU = verify jsonNLU jsonWKS
+checkTexts jsonWKS jsonNLU = verify jsonWKS jsonNLU
     where
-      verify (Right x) (Right y) = analyzed_text x == docText y
+      verify (Right x) (Right y) = docText x == analyzed_text y
       verify _ _ = False
 
 isMatch :: Mentions -> Entity -> Bool
-isMatch m e = (begin m) == (head (location (mentions e))) && 
-              (end m) == (last (location (mentions e))) &&
-              (type m) == (type e)
+isMatch m e = (menBegin m) == (head (location (head (mentions e)))) && 
+              (menEnd m) == (last (location (head (mentions e)))) &&
+              (menType m) == (etype e)
 
 isLarger :: Mentions -> Entity -> Bool
-isLarger m e = (begin m) > $ head (location (mentions e)) &&
+isLarger m e = (menBegin m) > head (location (head (mentions e)))
 
 isSmaller :: Mentions -> Entity -> Bool
-isSmaller m e = (begin m) < $ head (location (mentions e))
+isSmaller m e = (menBegin m) < head (location (head (mentions e)))
 
 isMismatch :: Mentions -> Entity -> Bool
-isMismatch m e = (begin m) == (head (location (mentions e))) && 
-                 (end m) == (last (location (mentions e)))
+isMismatch m e = (menBegin m) == (head (location (head (mentions e)))) && 
+                 (menEnd m) == (last (location (head (mentions e))))
 
 
 -- Receive [Mentions of WKS] [Entity of NLU] and return a list of diffs
-catchDiffs :: [Mentions] -> [Entity] -> [[Either Mentions Entity]] -> IO [[Either Mentions Entity]]
+catchDiffs :: [Mentions] -> [Entity] -> [[Either Mentions Entity]] -> [[Either Mentions Entity]]
 catchDiffs (x:xs) (y:ys) (ma:fa:mi:_)
-    | isNull x:xs    = [reverse ma, (map (\n -> Right n) y:ys):reverse fa, reverse mi]
-    | isNull y:ys    = [reverse ma, (map (\n -> Left n) x:xs):reverse fa, reverse mi]
+    | null (x:xs)    = [reverse ma, (reverse fa) ++ (map (\n -> Right n) (y:ys)), reverse mi]
+    | null (y:ys)    = [reverse ma, (reverse fa) ++ (map (\n -> Left n) (x:xs)), reverse mi]
     | isMatch x y    = catchDiffs xs ys [Right y:ma,fa,mi]
     | isMismatch x y = catchDiffs xs ys [ma,fa,Left x:Right y:mi]
     | isLarger x y   = catchDiffs (x:xs) ys [ma,Right y:fa,mi]
     | isSmaller x y  = catchDiffs xs (y:ys) [ma,Left x:fa,mi]
-    | otherwise      = do
-        putStrLn "Error in catchDiffs"
-        return [ma:fa:mi]
+    | otherwise      = [ma, fa, mi]
 
 -- listMatch :: [Mentions] -> [Entity] -> [Entity]
 -- listMatch (x:xs) (y:ys)
@@ -66,8 +64,8 @@ sortNLU  = sortOn (head . location . head . mentions)
 
 
 -- Receive files WKS and NLU and return a list of diffs
-validation :: Either String NLU.Document -> Either String WKS.Document -> IO [Either Mentions Entity]
-validation (Right jsonNLU) (Right jsonWKS) = catchDiffs men ent ([], [], [])
+validation :: Either String NLU.Document -> Either String WKS.Document -> [[Either Mentions Entity]]
+validation (Right jsonNLU) (Right jsonWKS) = catchDiffs men ent [[], [], []]
     where
         men = sortWKS (mentionsWKS  jsonWKS)
         ent = sortNLU (entities jsonNLU)
@@ -79,7 +77,7 @@ reading :: [FilePath] -> IO Bool
 reading [wksPath, nluPath] =  do 
     nlu <- readJSON nluPath
     wks <- readGJson wksPath
-    if checkTexts wks nlu then validation nlu wks 
+    if checkTexts wks nlu then return (null $ validation nlu wks) 
         else return False
     
 
