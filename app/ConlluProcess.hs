@@ -2,6 +2,7 @@ module ConlluProcess where
 
 
 import Data.Maybe
+import Data.Either
 import System.Environment 
 import System.Exit
 import Conllu.IO
@@ -20,7 +21,7 @@ cEntINsent ce s = out where
 
 -- Update sent metadata with list of CleanEntity
 metaUpdate :: Sent -> [CleanEntity] -> Sent
-metaUpdate s e = Sent (_meta s ++ [("entitys",cEntTOstr e)]) (_words s)
+metaUpdate s e = Sent (_meta s ++ [("entities",cEntTOstr e)]) (_words s)
 
 entFilter :: [CleanEntity] -> Sent -> [CleanEntity]
 entFilter [] _ = []
@@ -44,24 +45,46 @@ merge [jspath, clpath, outpath] = do
 
 -- -- como fazer...
 
--- entCheck:: Entity -> [CW AW] -> Bool
--- entCheck e l = res where
+
+-- cEntCheck :: CleanEntity -> [CW AW]
+
+
+
+
+
+
+
+
+-- cEntCheck :: CleanEntity -> [CW AW] -> Bool
+
+-- cEntCheck e l = res where
+--   er = cEntRange e
+--   nl = filter (\c -> isSubrange (cwRange c) er) l
+
+-- cEntCheck e l = res where
 --   er = head $ entRanges e
 --   nl = filter (\c -> isSubrange (cwRange c) er) l
 --   nodes = map _id nl
 --   roots = filter (\c -> not $ isMember (cwHead c) nodes) nl
 --   res = length roots > 1
 
--- sentCheck :: Sent -> [Entity]
--- sentCheck s = filter (`entCheck` w) ent where
---   ent = strTOent $ snd $ last $ _meta s
---   w = _words s
+-- sentCheck :: Sent -> Either String [CleanEntity]
+-- sentCheck s = (>>=) ent f
+--   where
+--     ent = strTOcEnts $ snd $ last $ _meta s
+--     w = _words s
+--     f e = Right $ filter (`cEntCheck` w) e
+
+-- cluCheck :: [Either String [CleanEntity]] -> IO ()
+-- cluCheck xs | not $ null ls = putStrLn $ "Conllu inválido: \n" ++ head ls
+--             | otherwise = print $ concat $ rights xs
+--               where
+--                 ls = lefts xs
 
 -- check :: [FilePath] -> IO ()
 -- check (p:_) = do
---   c <- readConlluFile p
---   print $ foldl (\r s -> r ++ sentCheck s) [] c
-
+--   clu <- readConlluFile p
+--   cluCheck $ map sentCheck clu
 
 -- -- main interface
 

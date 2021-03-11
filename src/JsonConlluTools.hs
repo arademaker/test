@@ -29,8 +29,8 @@ cEntRange (CleanEntity _ (b:e:_) _) = (b,e)
 cEntTOstr :: [CleanEntity] -> String
 cEntTOstr l = "[" ++ intercalate "," (map (C.unpack . encode) l) ++ "]"
 
--- strTOent :: String -> [Entity]
--- strTOent s = fromRight [] (eitherDecode (C.pack s) :: Either String [Entity])
+strTOcEnts :: String -> Either String [CleanEntity]
+strTOcEnts s = eitherDecode (C.pack s) :: Either String [CleanEntity]
 
 cleanEnts :: [Entity] -> [CleanEntity]
 cleanEnts = map (\(Entity _ t (m:_) _) -> CleanEntity t (location m) (confidence m))
