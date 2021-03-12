@@ -91,6 +91,14 @@ sentCheck s = (>>=) ents (`jsonCheck` _words s)
   where
     ents = strTOcEnts $ snd $ last $ _meta s
 
+check :: [FilePath] -> IO ()
+check (p:_) = do
+  clu <- readConlluFile p
+  let cs = map sentCheck clu
+      l = lefts cs
+      r = rights cs
+  print l
+
 -- sentCheck :: Sent -> Either String [CleanEntity]
 -- sentCheck s = (>>=) ent f
 --   where
@@ -120,7 +128,7 @@ help = putStrLn msg
 
 parse ["-h"]    = help >> exitSuccess
 parse ("-m":ls) = merge ls >> exitSuccess
--- parse ("-c":ls) = check ls >> exitSuccess
+parse ("-c":ls) = check ls >> exitSuccess
 parse ls        = help >> exitFailure
     
 main :: IO ()
