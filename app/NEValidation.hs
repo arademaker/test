@@ -1,7 +1,7 @@
 module NEValidation where
 
-import WKS
-import NLU
+import qualified WKS as W
+import qualified NLU as N
 import Data.Aeson
 import System.Exit
 import System.Environment
@@ -10,13 +10,11 @@ import Data.List
 import Data.Ord (comparing)
 
 
-
 -- Receive json-WKS json-NLU and check if the texts are the same
-checkTexts :: Either String WKS.Document -> Either String NLU.Document -> Bool
-checkTexts = verify
-    where
-      verify (Right x) (Right y) = docText x == analyzed_text y
-      verify _ _ = False
+checkTexts :: Either String W.Document -> Either String N.Document -> Bool
+checkTexts
+  | (Right x) (Right y) = W.docText x == N.analyzed_text y
+  | _ _ = False
 
 
 -- Receive a mention and an entity and check if the begins, the ends 
@@ -55,30 +53,22 @@ catchDiffs (x:xs) (y:ys) (ma:fa:mi:_)
     | otherwise      = [ma, fa, mi]
 
 
--- Receive [Mentions of WKS] and sort this list
-sortWKS :: [Mentions] -> [Mentions]
-sortWKS  = sortOn menBegin
-
--- Receive [Entity of NLU] and sort this list
-sortNLU :: [Entity] -> [Entity]
-sortNLU  = sortOn (head . location . head . mentions)
-
-
 -- Receive files WKS and NLU and return a list of diffs
 validation :: Either String NLU.Document -> Either String WKS.Document -> [[Either Mentions Entity]]
 validation (Right jsonNLU) (Right jsonWKS) = catchDiffs men ent [[], [], []]
     where
-        men = sortWKS (mentionsWKS  jsonWKS)
-        ent = sortNLU (entities jsonNLU)
+        menWKS = sortOn menBegin (W.mentions jsonWKS)
+        menNLU = sortOn (head . location) $ concatMap N.mentions (entities jsonNLU)
 
 
 -- Receive files, check texts and apply validation
 reading :: [FilePath] -> IO Bool
-reading [wksPath, nluPath] =  do 
-    nlu <- readJSON nluPath
-    wks <- readGJson wksPath
-    if checkTexts wks nlu then return (null $ validation nlu wks) 
-        else return False
+reading [wksPath, nluPath] = do
+  nlu <- N.readJSON nluPath
+  wks <- W.readJSON wksPath
+  if checkTexts wks nlu
+    then return (null $ validation nlu wks)
+    else return False
     
 
 main :: IO ()

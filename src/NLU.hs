@@ -117,6 +117,7 @@ data Document = Document
   , relations ::[Relation]
   , language :: String
   , entities :: [Entity]
+  , analyzed_text :: String
   } deriving (Show, Generic)
 
 instance FromJSON Document

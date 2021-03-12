@@ -3,28 +3,28 @@
 module WKS where
 
 import Data.Aeson
-    ( eitherDecode,
-      genericParseJSON,
-      defaultOptions,
-      genericToEncoding,
-      genericToJSON,
-      FromJSON(parseJSON),
-      Options(fieldLabelModifier),
-      ToJSON(toJSON, toEncoding) )
+  ( FromJSON(parseJSON)
+  , Options(fieldLabelModifier)
+  , ToJSON(toEncoding, toJSON)
+  , defaultOptions
+  , eitherDecode
+  , genericParseJSON
+  , genericToEncoding
+  , genericToJSON
+  )
+
 import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString.Lazy.Char8 as C
 import GHC.Generics ( Generic )
-
-
  
 data Properties =
   Properties
-    { entity_level   :: Maybe String
+    { entity_level :: Maybe String
     , entity_subtype :: Maybe String
-    , mention_class  :: Maybe String
-    , entity_class   :: Maybe String
-    , mention_role   :: Maybe String
-    , mention_type   :: Maybe String
+    , mention_class :: Maybe String
+    , entity_class :: Maybe String
+    , mention_role :: Maybe String
+    , mention_type :: Maybe String
     }
   deriving (Eq, Show, Generic)
 
@@ -40,40 +40,49 @@ customProperties = defaultOptions {fieldLabelModifier = aux} where
 
 instance FromJSON Properties where
   parseJSON = genericParseJSON customProperties
+
 instance ToJSON Properties where
   toJSON = genericToJSON customProperties
   toEncoding = genericToEncoding customProperties
 
 
-data Mentions = Mentions
-    { menId      :: String,
-      source     :: Maybe String,
-      properties :: Properties,
-      menType    :: String,
-      menBegin   :: Int,
-      menEnd     :: Int,
-      inCoref    :: Bool
-    } deriving (Eq, Show, Generic)
+data Mention =
+  Mention
+    { menId :: String
+    , source :: Maybe String
+    , properties :: Properties
+    , menType :: String
+    , menBegin :: Int
+    , menEnd :: Int
+    , inCoref :: Bool
+    }
+  deriving (Eq, Show, Generic)
 
-customMentions :: Options
-customMentions = defaultOptions {fieldLabelModifier = aux} where
-  aux x | x == "menId"    = "id"
-        | x == "menType"  = "type"
-        | x == "menBegin" = "begin"
-        | x == "menEnd"   = "end"
-        | otherwise = x
+customMention :: Options
+customMention = defaultOptions {fieldLabelModifier = aux}
+  where
+    aux x
+      | x == "menId" = "id"
+      | x == "menType" = "type"
+      | x == "menBegin" = "begin"
+      | x == "menEnd" = "end"
+      | otherwise = x
+
 --instance Eq Mentions where
 --  (Mentions i p t b e c) 
-instance Ord Mentions where
+
+instance Ord Mention where
   compare x y = compare (menBegin x) (menBegin y)
-instance FromJSON Mentions where
-  parseJSON = genericParseJSON customMentions
-instance ToJSON Mentions where
-  toJSON = genericToJSON customMentions
-  toEncoding = genericToEncoding customMentions
+
+instance FromJSON Mention where
+  parseJSON = genericParseJSON customMention
+
+instance ToJSON Mention where
+  toJSON = genericToJSON customMention
+  toEncoding = genericToEncoding customMention
 
 
-data Tokens = Tokens
+data Token = Token
     { tokId      :: String,
       tokBegin   :: Int,
       tokEnd     :: Int,
@@ -81,98 +90,114 @@ data Tokens = Tokens
       whiteSpace :: Bool
     } deriving (Show, Generic)
 
-customTokens :: Options
-customTokens = defaultOptions {fieldLabelModifier = aux} where
-  aux x | x == "tokId"    = "id"
-        | x == "tokBegin" = "begin"
-        | x == "tokEnd"   = "end"
-        | x == "tokText"  = "text"
-        | otherwise = x
+customToken :: Options
+customToken = defaultOptions {fieldLabelModifier = aux}
+  where
+    aux x
+      | x == "tokId" = "id"
+      | x == "tokBegin" = "begin"
+      | x == "tokEnd" = "end"
+      | x == "tokText" = "text"
+      | otherwise = x
 
-instance FromJSON Tokens where
-  parseJSON = genericParseJSON customTokens
-instance ToJSON Tokens where
-  toJSON = genericToJSON customTokens
-  toEncoding = genericToEncoding customTokens
+instance FromJSON Token where
+  parseJSON = genericParseJSON customToken
+
+instance ToJSON Token where
+  toJSON = genericToJSON customToken
+  toEncoding = genericToEncoding customToken
 
 
-data Sentences = Sentences
+data Sentence = Sentence
     { senId    :: String,
       senBegin :: Int,
       senEnd   :: Int,
       senText  :: String,
-      tokens   :: [Tokens]
+      tokens   :: [Token]
     } deriving (Show, Generic)
 
 customSent :: Options
-customSent = defaultOptions {fieldLabelModifier = aux} where
-  aux x | x == "senId"    = "id"
-        | x == "senBegin" = "begin"
-        | x == "senEnd"   = "end"
-        | x == "senText"  = "text"
-        | otherwise = x
+customSent = defaultOptions {fieldLabelModifier = aux}
+  where
+    aux x
+      | x == "senId" = "id"
+      | x == "senBegin" = "begin"
+      | x == "senEnd" = "end"
+      | x == "senText" = "text"
+      | otherwise = x
 
-instance FromJSON Sentences where
+instance FromJSON Sentence where
   parseJSON = genericParseJSON customSent
-instance ToJSON Sentences where
+
+instance ToJSON Sentence where
   toJSON = genericToJSON customSent
   toEncoding = genericToEncoding customSent
 
 
-data Corefs = Corefs
-  { corId :: Maybe String, 
-    corProperties :: Maybe Properties, 
-    corMentions :: Maybe [String]
-  } deriving (Show, Generic)
-
-customCorefs :: Options
-customCorefs = defaultOptions {fieldLabelModifier = aux} where
-  aux x | x == "corId"         = "id"
-        | x == "corProperties" = "properties"
-        | x == "corMentions"   = "mentions"
-        | otherwise = x
-
-instance FromJSON Corefs where
-  parseJSON = genericParseJSON customCorefs
-instance ToJSON Corefs where
-  toJSON = genericToJSON customCorefs
-  toEncoding = genericToEncoding customCorefs
+data Coref =
+  Coref
+    { corId :: Maybe String
+    , corProperties :: Maybe Properties
+    , corMentions :: Maybe [String]
+    }
+  deriving (Show, Generic)
 
 
-data Document = Document
-    { docId         :: String,
-      name          :: String,
-      createdDate   :: Int,
-      version       :: Int,
-      docText       :: String,
-      docLength     :: Int,
-      language      :: String,
-      status        :: String,
-      modifiedDate  :: Int,
-      documentSet   :: [String],
-      preannotation :: [String],
-      sentences     :: [Sentences],
-      mentionsWKS   :: [Mentions],
-      relations     :: [String],
-      corefs        :: [Maybe Corefs],
-      typeResolved  :: Bool,
-      userResolved  :: Bool
-    } deriving (Show, Generic)
+customCoref :: Options
+customCoref = defaultOptions {fieldLabelModifier = aux}
+  where
+    aux x
+      | x == "corId" = "id"
+      | x == "corProperties" = "properties"
+      | x == "corMentions" = "mentions"
+      | otherwise = x
+
+instance FromJSON Coref where
+  parseJSON = genericParseJSON customCoref
+
+instance ToJSON Coref where
+  toJSON = genericToJSON customCoref
+  toEncoding = genericToEncoding customCoref
+
+
+data Document =
+  Document
+    { docId :: String
+    , name :: String
+    , createdDate :: Int
+    , version :: Int
+    , docText :: String
+    , docLength :: Int
+    , language :: String
+    , status :: String
+    , modifiedDate :: Int
+    , documentSet :: [String]
+    , preannotation :: [String]
+    , sentences :: [Sentence]
+    , mentions :: [Mention]
+    , relations :: Maybe [String]  -- bug
+    , corefs :: Maybe [Coref]
+    , typeResolved :: Bool
+    , userResolved :: Bool
+    }
+  deriving (Show, Generic)
 
 customDoc :: Options
-customDoc = defaultOptions {fieldLabelModifier = aux} where
-  aux x | x == "docId" = "id"
-        | x == "docText" = "text"
-        | x == "mentionsWKS" = "mentions"
-        | otherwise = x
+customDoc = defaultOptions {fieldLabelModifier = aux}
+  where
+    aux x
+      | x == "docId" = "id"
+      | x == "docText" = "text"
+      | x == "mentionsWKS" = "mentions"
+      | otherwise = x
 
 instance FromJSON Document where
   parseJSON = genericParseJSON customDoc
+
 instance ToJSON Document where
   toJSON = genericToJSON customDoc
   toEncoding = genericToEncoding customDoc
 
-readGJson :: FilePath -> IO (Either String Document)
-readGJson path = (eitherDecode <$> B.readFile path) :: IO (Either String Document)
 
- 
+readJSON :: FilePath -> IO (Either String Document)
+readJSON path = (eitherDecode <$> B.readFile path) :: IO (Either String Document)
