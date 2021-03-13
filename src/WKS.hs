@@ -13,6 +13,7 @@ import Data.Aeson
   , genericToJSON
   )
 
+import Data.Either
 import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString.Lazy.Char8 as C
 import GHC.Generics ( Generic )
@@ -133,22 +134,42 @@ instance ToJSON Sentence where
   toJSON = genericToJSON customSent
   toEncoding = genericToEncoding customSent
 
+data Relation =
+  Relation
+    { relId :: String
+    , relType :: String
+    , args :: [String]
+    }
+    deriving (Show, Generic)
+
+
+instance FromJSON Relation where
+  parseJSON = genericParseJSON customRelation
+
+instance ToJSON Relation where
+  toJSON = genericToJSON customCoref
+  toEncoding = genericToEncoding customRelation
+
+customRelation :: Options
+customRelation = defaultOptions {fieldLabelModifier = aux}
+  where
+    aux x
+      | x == "relId" = "id"
+      | x == "relType" = "type"
+      | otherwise = x  
 
 data Coref =
   Coref
-    { corId :: Maybe String
-    , corProperties :: Maybe Properties
-    , corMentions :: Maybe [String]
+    { corId :: String
+    , corMentions :: [String]
     }
   deriving (Show, Generic)
-
 
 customCoref :: Options
 customCoref = defaultOptions {fieldLabelModifier = aux}
   where
     aux x
       | x == "corId" = "id"
-      | x == "corProperties" = "properties"
       | x == "corMentions" = "mentions"
       | otherwise = x
 
@@ -175,8 +196,8 @@ data Document =
     , preannotation :: [String]
     , sentences :: [Sentence]
     , mentions :: [Mention]
-    , relations :: Maybe [String]  -- bug
-    , corefs :: Maybe [Coref]
+    , relations :: [Relation] 
+    , corefs :: [Coref]
     , typeResolved :: Bool
     , userResolved :: Bool
     }
