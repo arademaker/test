@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 730bd49ea912b503aad9801170a482aba1afed7d091de1ef6e98ef2393f292af
+-- hash: bf3f26bb55b88f0667cb69c8b274bebb5c37e6b05820aa8d17c91016bfdd1387
 
 name:           test
 version:        0.1.0.0
@@ -49,7 +49,7 @@ executable test-conllu
   main-is: ConlluProcess.hs
   other-modules:
       Main2
-      NEValidation
+      NER
       Sentence
       Paths_test
   hs-source-dirs:
@@ -72,7 +72,7 @@ executable test-sentence
   other-modules:
       ConlluProcess
       Main2
-      NEValidation
+      NER
       Paths_test
   hs-source-dirs:
       app
@@ -90,7 +90,7 @@ executable test-sentence
   default-language: Haskell2010
 
 executable test-validation
-  main-is: NEValidation.hs
+  main-is: NER.hs
   other-modules:
       ConlluProcess
       Main2
@@ -98,7 +98,7 @@ executable test-validation
       Paths_test
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is NEValidation
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is NER
   build-depends:
       aeson
     , base >=4.7 && <5

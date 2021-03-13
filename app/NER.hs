@@ -1,5 +1,5 @@
 
-module NEValidation where
+module NER where
 
 import qualified WKS as W
 import qualified NLU as N
@@ -7,6 +7,7 @@ import Data.Aeson
 import System.Exit
 import System.Environment
 import Data.Either
+import Data.Maybe
 import Data.List
 import Data.Ord (comparing)
 
@@ -20,7 +21,7 @@ data Annotation =
     }
   deriving (Eq, Show)
 
-
+  
 -- receive json-WKS json-NLU and check if the texts are the same
 checkTexts :: W.Document -> N.Document -> Bool
 checkTexts x y = W.docText x == N.analyzed_text y
@@ -48,46 +49,42 @@ nluAnn doc = concatMap aux1 (N.entities doc)
         , anSource = ["NLU"]
         }
 
-isMatch :: Annotation -> Annotation -> Bool
-isMatch ann1 ann2 = anType ann1 == anType ann2 && 
-                    anBegin ann1 == anBegin ann2 && 
-                    anEnd ann1 == anEnd ann2
 
-isMismatch :: Annotation -> Annotation -> Bool
-isMismatch ann1 ann2 = anBegin ann1 == anBegin ann2 && 
-                       anEnd ann1 == anEnd ann2
-
+merge1 :: Annotation -> Annotation -> Maybe Annotation
+merge1 a b =
+  if anBegin a == anBegin b && anEnd a == anEnd b
+    then Just
+           a
+             { anType = anType a ++ anType b
+             , anSource = anSource a ++ anSource b
+             }
+    else Nothing
+              
 
 -- receive annotations list of Nlu and Wks return a Union Annotation
-annNluWks :: [Annotation] -> [Annotation] -> [Annotation]
-annNluWks (x:xs) (y:ys)
-  | null (x:xs) = (y:ys)
-  | null (y:ys) = (x:xs)
-  | isMatch x y = Annotation 
-                    { anType = anType x
-                    , anBegin = anBegin x
-                    , anEnd = anEnd x
-                    , anSource = anSource x ++ anSource y
-                    } : annNluWks xs ys
-  | isMismatch x y =  Annotation 
-                        { anType = anType x ++ anType y
-                        , anBegin = anBegin x
-                        , anEnd = anEnd x
-                        , anSource = anSource x ++ anSource y
-                        } : annNluWks xs ys
-  | anBegin x > anBegin y = y: annNluWks (x:xs) ys
-  | anBegin x < anBegin y = x: annNluWks xs (y:ys)
-  | otherwise = []
+merge :: [Annotation] -> [Annotation] -> [Annotation]
+merge [] ys = ys
+merge xs [] = xs
+merge x'@(x:xs) y'@(y:ys)
+  | anBegin x < anBegin y = x : merge xs y'
+  | anBegin x > anBegin y = y : merge x' ys
+  | anBegin x == anBegin y && isJust res = fromJust res : merge xs ys
+  | otherwise = x : y : merge xs ys
+  where
+    res = merge1 x y
 
-
-
+    
 -- Receive files WKS and NLU and return a list of diffs
 validation :: Either String N.Document -> Either String W.Document -> [Annotation]
-validation (Right docNLU) (Right docWKS) = if checkTexts docWKS docNLU then annNluWks aN aW else []
-    where
-        aN = sortOn anBegin (nluAnn docNLU)
-        aW = sortOn anBegin (wksAnn docWKS)
-    
+validation (Right docNLU) (Right docWKS) =
+  if checkTexts docWKS docNLU
+    then merge aN aW
+    else []
+  where
+    aN = sortOn anBegin (nluAnn docNLU)
+    aW = sortOn anBegin (wksAnn docWKS)
+validation _ _ = []
+
 
 main :: IO ()
 main = putStrLn "OK"
