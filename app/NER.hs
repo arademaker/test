@@ -68,7 +68,7 @@ merge xs [] = xs
 merge x'@(x:xs) y'@(y:ys)
   | anBegin x < anBegin y = x : merge xs y'
   | anBegin x > anBegin y = y : merge x' ys
-  | anBegin x == anBegin y && isJust res = fromJust res : merge xs ys
+  | isJust res = fromJust res : merge xs ys
   | otherwise = x : y : merge xs ys
   where
     res = merge1 x y
