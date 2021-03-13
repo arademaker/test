@@ -13,19 +13,20 @@ import Data.Ord (comparing)
 
 data Annotation =
   Annotation
-    { anType :: String
+    { anType :: [String]
     , anBegin :: Int
     , anEnd :: Int
-    , anSource :: String
+    , anText :: String
+    , anSource :: [String]
     }
   deriving (Eq, Show)
 
 
--- receive json-WKS json-NLU and check if the texts are the same
-checkTexts :: Either String W.Document -> Either String N.Document -> Bool
-checkTexts
-  | (Right x) (Right y) = W.docText x == N.analyzed_text y
-  | _ _ = False
+-- -- receive json-WKS json-NLU and check if the texts are the same
+-- checkTexts :: Either String W.Document -> Either String N.Document -> Bool
+-- checkTexts
+--   | (Right x) (Right y) = W.docText x == N.analyzed_text y
+--   | _ _ = False
 
 
 -- -- Receive a mention and an entity and check if the begins, the ends 
@@ -63,22 +64,22 @@ checkTexts
 --     | otherwise      = [ma, fa, mi]
 
 
--- -- Receive files WKS and NLU and return a list of diffs
--- validation :: Either String NLU.Document -> Either String WKS.Document -> [[Either Mentions Entity]]
--- validation (Right jsonNLU) (Right jsonWKS) = catchDiffs men ent [[], [], []]
---     where
---         menWKS = sortOn menBegin (W.mentions jsonWKS)
---         menNLU = sortOn (head . location) $ concatMap N.mentions (entities jsonNLU)
+-- Receive files WKS and NLU and return a list of diffs
+validation :: Either String N.Document -> Either String W.Document -> [Annotation]
+validation (Right docNLU) (Right docWKS) = annNluWks aN aW
+    where
+        aN = sortOn anBegin (nluAnn docNLU)
+        aW = sortOn anBegin (wksAnn docWKS)
 
 wksAnn :: W.Document -> [Annotation]
 wksAnn doc = map aux (W.mentions doc)
   where
     aux m =
       Annotation
-        { anType = W.menType m
-        , anBegin = W.menBegin m
-        , anEnd = W.menEnd m
-        , anSource = "WKS"
+        { anType = [W.menType m]
+        , anBegin = W.menBegin m - 1
+        , anEnd = W.menEnd m - 1
+        , anSource = ["WKS"]
         } 
             
 nluAnn :: N.Document -> [Annotation]
@@ -87,12 +88,55 @@ nluAnn doc = concatMap aux1 (N.entities doc)
     aux1 ent = map (aux2 ent) (N.mentions ent)
     aux2 ent men =
       Annotation
-        { anType = N.etype ent
+        { anType = [N.etype ent]
         , anBegin = head $ N.location men
         , anEnd = (N.location men) !! 1
-        , anSource = "NLU"
-        } 
-      
+        , anSource = ["NLU"]
+        }
+
+isMatch :: Annotation -> Annotation -> Bool
+isMatch ann1 ann2 = anType ann1 == anType ann2 && 
+                    anBegin ann1 == anBegin ann2 && 
+                    anEnd ann1 == anEnd ann2
+
+isMismatch :: Annotation -> Annotation -> Bool
+isMismatch ann1 ann2 = anBegin ann1 == anBegin ann2 && 
+                       anEnd ann1 == anEnd ann2
+
+
+-- annNluWks :: N.Document -> W.Document -> [Annotation]
+-- annNluWks docNlu docWks = 
+--   let annNlu = nluAnn docNlu 
+--       annWks = wksAnn docWks 
+--   in  concatMap aux annNlu 
+--         where 
+--           aux aN = concatMap aux2 annWks 
+--           aux2 aN aW = 
+--             |annIsMatch aN aW = [Annotation { anType = [anType aN], anBegin = anBegin aN, anEnd = anEnd aN , anSource = ["NLU", "WKS"]}]    
+--             |isMismatch aN aW = [Annotation { anType = [anType aN, anType aW], anBegin = anBegin aN, anEnd = anEnd aN, anSource = ["NLU", "WKS"]}]  
+--             |otherwise = [aN, aW]
+
+-- receive annotations list of Nlu and Wks return a Union Annotation
+annNluWks :: [Annotation] -> [Annotation] -> [Annotation]
+annNluWks (x:xs) (y:ys)
+  | null (x:xs) = (y:ys)
+  | null (y:ys) = (x:xs)
+  | isMatch x y = Annotation 
+                    { anType = anType x
+                    , anBegin = anBegin x
+                    , anEnd = anEnd x
+                    , anSource = anSource x ++ anSource y
+                    } : annNluWks xs ys
+  | isMismatch x y =  Annotation 
+                        { anType = anType x ++ anType y
+                        , anBegin = anBegin x
+                        , anEnd = anEnd x
+                        , anSource = anSource x ++ anSource y
+                        } : annNluWks xs ys
+  | anBegin x > anBegin y = y: annNluWks (x:xs) ys
+  | anBegin x < anBegin y = x: annNluWks xs (y:ys)
+  | otherwise = []
+
 
 -- -- Receive files, check texts and apply validation
 -- reading :: [FilePath] -> IO Bool
