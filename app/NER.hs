@@ -45,7 +45,7 @@ nluAnn doc = concatMap aux1 (N.entities doc)
       Annotation
         { anType = [N.etype ent]
         , anBegin = head $ N.location men
-        , anEnd = (N.location men) !! 1
+        , anEnd = N.location men !! 1
         , anSource = ["NLU"]
         }
 
@@ -61,7 +61,9 @@ merge1 a b =
     else Nothing
               
 
--- receive annotations list of Nlu and Wks return a Union Annotation
+-- receive annotations list of annotations from the WKS GT and NLU
+-- return the consolidation of the annotations.
+
 merge :: [Annotation] -> [Annotation] -> [Annotation]
 merge [] ys = ys
 merge xs [] = xs
@@ -74,16 +76,20 @@ merge x'@(x:xs) y'@(y:ys)
     res = merge1 x y
 
     
--- Receive files WKS and NLU and return a list of diffs
-validation :: Either String N.Document -> Either String W.Document -> [Annotation]
+-- Receive files WKS and NLU and return a list of diffs. The return
+-- Nothing means that either the inputs are Left (error in the parser)
+-- or the texts are different. Note that the return can also be Just
+-- [], meaning that no annotation were available.
+
+validation :: Either String N.Document -> Either String W.Document -> Maybe [Annotation]
 validation (Right docNLU) (Right docWKS) =
   if checkTexts docWKS docNLU
-    then merge aN aW
-    else []
+    then Just (merge aN aW)
+    else Nothing
   where
     aN = sortOn anBegin (nluAnn docNLU)
     aW = sortOn anBegin (wksAnn docWKS)
-validation _ _ = []
+validation _ _ = Nothing
 
 
 main :: IO ()
