@@ -16,7 +16,6 @@ data Annotation =
     { anType :: [String]
     , anBegin :: Int
     , anEnd :: Int
-    , anText :: String
     , anSource :: [String]
     }
   deriving (Eq, Show)
