@@ -21,11 +21,9 @@ data Annotation =
   deriving (Eq, Show)
 
 
--- -- receive json-WKS json-NLU and check if the texts are the same
--- checkTexts :: Either String W.Document -> Either String N.Document -> Bool
--- checkTexts
---   | (Right x) (Right y) = W.docText x == N.analyzed_text y
---   | _ _ = False
+-- receive json-WKS json-NLU and check if the texts are the same
+checkTexts :: W.Document -> N.Document -> Bool
+checkTexts x y = W.docText x == N.analyzed_text y
 
 
 -- -- Receive a mention and an entity and check if the begins, the ends 
@@ -65,7 +63,7 @@ data Annotation =
 
 -- Receive files WKS and NLU and return a list of diffs
 validation :: Either String N.Document -> Either String W.Document -> [Annotation]
-validation (Right docNLU) (Right docWKS) = annNluWks aN aW
+validation (Right docNLU) (Right docWKS) = if checkTexts docWKS docNLU then annNluWks aN aW else []
     where
         aN = sortOn anBegin (nluAnn docNLU)
         aW = sortOn anBegin (wksAnn docWKS)
@@ -76,8 +74,8 @@ wksAnn doc = map aux (W.mentions doc)
     aux m =
       Annotation
         { anType = [W.menType m]
-        , anBegin = W.menBegin m - 1
-        , anEnd = W.menEnd m - 1
+        , anBegin = W.menBegin m
+        , anEnd = W.menEnd m
         , anSource = ["WKS"]
         } 
             
