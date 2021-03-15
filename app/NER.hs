@@ -92,20 +92,10 @@ validation (Right docNLU) (Right docWKS) =
 validation _ _ = Nothing
 
 
--- createCSV :: Either String N.Document -> Either String W.Document -> String -> Maybe files
-createCSV nluJson wksJson name = writeFile (name ++ ".csv") text
+createCSV :: Either String N.Document -> Either String W.Document -> String -> IO ()
+createCSV nluJson wksJson name = writeFile (name ++ ".csv") $ concatMap aux $ fromJust $ validation nluJson wksJson 
   where
-    Ann = validation nluJson wksJson 
-    text = concatMap aux $ fromJust $ Ann 
     aux a 
-      | last (anSource a) == "NLU" = (show (anBegin a)) 
-                                  ++ "," 
-                                  ++ (show (anEnd a)) 
-                                  ++ "," 
-                                  ++ (head (anType a)) 
-                                  ++ ",-," 
-                                  ++ (last (anSource a) 
-                                  ++ ",-\n"   
       | (anSource a) !! 0 == "WKS" = (show (anBegin a)) 
                                   ++ "," 
                                   ++ (show (anEnd a)) 
@@ -114,6 +104,14 @@ createCSV nluJson wksJson name = writeFile (name ++ ".csv") text
                                   ++ ",-," 
                                   ++ (last (anSource a)) 
                                   ++ "\n"  
+      | last (anSource a) == "NLU" = (show (anBegin a)) 
+                                  ++ "," 
+                                  ++ (show (anEnd a)) 
+                                  ++ "," 
+                                  ++ (head (anType a)) 
+                                  ++ ",-," 
+                                  ++ (last (anSource a)) 
+                                  ++ ",-\n"
       | otherwise                  = (show (anBegin a)) 
                                   ++ "," 
                                   ++ (show (anEnd a)) 
