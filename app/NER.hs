@@ -93,10 +93,10 @@ validation _ _ = Nothing
 
 
 -- createCSV :: Either String N.Document -> Either String W.Document -> String -> Maybe files
-createCSV nluJson wksJson name = writeFile (name ++ ".csv") lineCsv
+createCSV nluJson wksJson name = writeFile (name ++ ".csv") text
   where
     Ann = validation nluJson wksJson 
-    lineCsv = concatMap aux $ fromJust $ Ann 
+    text = concatMap aux $ fromJust $ Ann 
     aux a 
       | last (anSource a) == "NLU" = (show (anBegin a)) 
                                   ++ "," 
