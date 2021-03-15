@@ -92,6 +92,42 @@ validation (Right docNLU) (Right docWKS) =
 validation _ _ = Nothing
 
 
+-- createCSV :: Either String N.Document -> Either String W.Document -> String -> Maybe files
+createCSV nluJson wksJson name = writeFile (name ++ ".csv") lineCsv
+  where
+    Ann = validation nluJson wksJson 
+    lineCsv = concatMap aux $ fromJust $ Ann 
+    aux a 
+      | last (anSource a) == "NLU" = (show (anBegin a)) 
+                                  ++ "," 
+                                  ++ (show (anEnd a)) 
+                                  ++ "," 
+                                  ++ (head (anType a)) 
+                                  ++ ",-," 
+                                  ++ (last (anSource a) 
+                                  ++ ",-\n"   
+      | (anSource a) !! 0 == "WKS" = (show (anBegin a)) 
+                                  ++ "," 
+                                  ++ (show (anEnd a)) 
+                                  ++ ",-," 
+                                  ++ (head (anType a)) 
+                                  ++ ",-," 
+                                  ++ (last (anSource a)) 
+                                  ++ "\n"  
+      | otherwise                  = (show (anBegin a)) 
+                                  ++ "," 
+                                  ++ (show (anEnd a)) 
+                                  ++ "," 
+                                  ++ (head (anType a)) 
+                                  ++ "," 
+                                  ++ (last (anType a)) 
+                                  ++ "," 
+                                  ++ (head (anSource a)) 
+                                  ++ "," 
+                                  ++ (last (anSource a)) 
+                                  ++ "\n"
+
+
 main :: IO ()
 main = putStrLn "OK"
 
@@ -99,9 +135,9 @@ main = putStrLn "OK"
 
 saida são linhas com:
 
-begin,end,type,-,source,-
-begin,end,-,type,-,source
-begin,end,type1,type2,source1,source2
-begin,end,type1,type1,source1,source2
+(1) begin,end,type,-,source,-
+(2) begin,end,-,type,-,source
+(3) begin,end,type1,type2,source1,source2
+(4) begin,end,type1,type1,source1,source2 <- equivalente a (3)
 
 -}
