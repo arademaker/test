@@ -68,8 +68,8 @@ merge :: [Annotation] -> [Annotation] -> [Annotation]
 merge [] ys = ys
 merge xs [] = xs
 merge x'@(x:xs) y'@(y:ys)
-  | anBegin x < anBegin y = x : merge xs y'
-  | anBegin x > anBegin y = y : merge x' ys
+  | anBegin x < anBegin y = addNullSpace x : merge xs y'
+  | anBegin x > anBegin y = addNullSpace y : merge x' ys
   | isJust res = fromJust res : merge xs ys
   | otherwise = x : y : merge xs ys
   where
@@ -91,39 +91,25 @@ validation (Right docNLU) (Right docWKS) =
     aW = sortOn anBegin (wksAnn docWKS)
 validation _ _ = Nothing
 
+addNullSpace :: Annotation -> Annotation
+addNullSpace ann =
+  if (anSource ann) == ["WKS"]
+    then ann 
+           { anType = ["-"] ++ anType ann
+           , anSource = ["-"] ++ anSource ann
+           }
+    else ann
+           { anType = anType ann ++ ["-"]
+           , anSource = anSource ann ++ ["-"]
+           }
 
-createCSV :: Either String N.Document -> Either String W.Document -> String -> IO ()
-createCSV nluJson wksJson name = writeFile (name ++ ".csv") $ concatMap aux $ fromJust $ validation nluJson wksJson 
-  where
-    aux a 
-      | (anSource a) !! 0 == "WKS" = (show (anBegin a)) 
-                                  ++ "," 
-                                  ++ (show (anEnd a)) 
-                                  ++ ",-," 
-                                  ++ (head (anType a)) 
-                                  ++ ",-," 
-                                  ++ (last (anSource a)) 
-                                  ++ "\n"  
-      | last (anSource a) == "NLU" = (show (anBegin a)) 
-                                  ++ "," 
-                                  ++ (show (anEnd a)) 
-                                  ++ "," 
-                                  ++ (head (anType a)) 
-                                  ++ ",-," 
-                                  ++ (last (anSource a)) 
-                                  ++ ",-\n"
-      | otherwise                  = (show (anBegin a)) 
-                                  ++ "," 
-                                  ++ (show (anEnd a)) 
-                                  ++ "," 
-                                  ++ (head (anType a)) 
-                                  ++ "," 
-                                  ++ (last (anType a)) 
-                                  ++ "," 
-                                  ++ (head (anSource a)) 
-                                  ++ "," 
-                                  ++ (last (anSource a)) 
-                                  ++ "\n"
+-- Mudar essa func
+lineCsv :: Annotation -> String
+lineCsv a = intercalate "," $ [(show (anBegin a)), (show (anEnd a))] ++ (anType a) ++ (anSource a) ++ ["\n"]
+
+
+createCSV :: [Annotation] -> FilePath -> IO ()
+createCSV ann file = writeFile file $ concatMap lineCsv ann
 
 
 main :: IO ()
