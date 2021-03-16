@@ -109,24 +109,24 @@ instance ToJSON Entity where
   toEncoding = genericToEncoding customEntity
 
 
-data CleanEntity = CleanEntity
-  { ceText :: String
-  , ceRange :: [Int]
-  , ceConf :: Float
+data CleanMention = CleanMention
+  { cmText :: String
+  , range_c :: [Int]
+  , range_t :: [Int]
   } deriving (Show, Generic)
 
-customCleanEntity :: Options
-customCleanEntity = defaultOptions {fieldLabelModifier = aux} where
-  aux x | x == "ceText" = "text"
-        | x == "ceRange" = "range"
-        | x == "ceConf" = "confidence"
+customCleanMention :: Options
+customCleanMention = defaultOptions {fieldLabelModifier = aux} where
+  aux x | x == "cmText" = "text"
+        | x == "range_t" = "range-t"
+        | x == "range_c" = "range-c"
         | otherwise = x
 
-instance FromJSON CleanEntity where
-  parseJSON = genericParseJSON customCleanEntity
-instance ToJSON CleanEntity where
-  toJSON = genericToJSON customCleanEntity
-  toEncoding = genericToEncoding customCleanEntity
+instance FromJSON CleanMention where
+  parseJSON = genericParseJSON customCleanMention
+instance ToJSON CleanMention where
+  toJSON = genericToJSON customCleanMention
+  toEncoding = genericToEncoding customCleanMention
 
 
 data Document = Document

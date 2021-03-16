@@ -14,21 +14,51 @@ import JsonConlluTools
 
 -- File Merge Section
 
+
+
+
+
 -- Verify if CleanEntity belongs to Sent
-cEntINsent :: CleanEntity -> Sent -> Maybe Bool 
-cEntINsent ce s = out where
+entINsent :: Entity -> Sent -> Maybe Bool 
+entINsent e s = out where
   sRange = catMaybes [sentRange s]
-  out = if null sRange then Nothing else Just $ isSubrange (cEntRange ce) (head sRange)
+  out = if null sRange then Nothing else Just $ isSubrange (entRange e) (head sRange)
+
+
+
+
+prevRange _ (_,Nothing) = False
+prevRange (x,y) (i,Just (a,b)) = b < x
+
+outRange _ (_,Nothing) = False
+outRange (x,y) (i,Just (a,b)) = a > y
+
+aux [] _ = []
+aux (x:xs) er | prevRange er x = aux xs er
+              | outRange er x = []
+              | otherwise = fst x : aux xs er
+
+
+entClean :: Entity -> Sent -> CleanMention
+entClean e s = CleanMention (etext e) (location $ head $ mentions e) t_range
+  where
+    w = _words s
+    t = zip (map _id w) (map cwRange w)
+    er = entRange e
+    nodes = aux t er
+    t_range = map (\(SID x) -> x) [head nodes,last nodes]
+
+
 
 -- Update sent metadata with list of CleanEntity
-metaUpdate :: Sent -> [CleanEntity] -> Sent
-metaUpdate s e = Sent (_meta s ++ [("entities",cEntTOstr e)]) (_words s)
+metaUpdate :: Sent -> [Entity] -> Sent
+metaUpdate s e = Sent (_meta s ++ [("entities",cMenTOstr $ map (`entClean` s) e)]) (_words s)
 
 -- Filter CleanEntity list with the ones that belong to the Sent given
-entFilter :: [CleanEntity] -> Sent -> [CleanEntity]
+entFilter :: [Entity] -> Sent -> [Entity]
 entFilter [] _ = []
 entFilter (x:xs) s
-  | cEntINsent x s == Just False = entFilter xs s
+  | entINsent x s == Just False = entFilter xs s
   | otherwise = x:entFilter xs s
 
 -- Recieves the NLU.Document (or an reading error), a Conllu.Doc and a out_file path
@@ -36,10 +66,10 @@ entFilter (x:xs) s
 addJson :: Either String Document -> Doc -> FilePath -> IO ()
 addJson (Left s) _ _ = putStrLn $ "JSON INVÁLIDO: \n" ++ s
 addJson (Right js) sents outpath 
-  | isNothing $ sentRange $ head sents = putStrLn "CONLLU INVÁLIDO: \n Ranges de sentenças não encontrados"
+  | null $ mapMaybe sentRange sents = putStrLn "CONLLU INVÁLIDO: \n Ranges de sentenças não encontrados"
   | otherwise = writeConlluFile outpath outConll
   where
-    outConll = map (\s -> metaUpdate s $ entFilter (cleanEnts $ entities js) s) sents
+    outConll = map (\s -> metaUpdate s $ entFilter (entities js) s) sents
 
 -- Recieves the filepaths, opens the files and calls addJson
 merge :: [FilePath] -> IO ()
@@ -47,6 +77,10 @@ merge [jspath, clpath, outpath] = do
   esd <- readJSON jspath
   d <- readConlluFile clpath
   addJson esd d outpath
+merge _ = help >> exitFailure
+
+
+{-
 
 
 
@@ -114,6 +148,7 @@ check (p:_) = do
     then (if null r then "No inconsistences" else show r)
     else head l
 
+-}
 
 -- -- main interface
 
@@ -126,7 +161,7 @@ help = putStrLn msg
 
 parse ["-h"]    = help >> exitSuccess
 parse ("-m":ls) = merge ls >> exitSuccess
-parse ("-c":ls) = check ls >> exitSuccess
+-- parse ("-c":ls) = check ls >> exitSuccess
 parse ls        = help >> exitFailure
     
 main :: IO ()

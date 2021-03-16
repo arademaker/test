@@ -20,17 +20,16 @@ isMember n = foldr (\x -> (||) (n==x)) False
 
 
 -- NLU.Json manipulation
-cEntRange :: CleanEntity -> Range
-cEntRange (CleanEntity _ (b:e:_) _) = (b,e)
+-- cMenRange :: CleanMention -> Range
+-- cMenRange (CleanMention _ (b:e:_) _) = (b,e)
+entRange :: Entity -> Range
+entRange (Entity _ _ ((Mention _ [a,b] _):_) _) = (a,b)
 
-cEntTOstr :: [CleanEntity] -> String
-cEntTOstr l = "[" ++ intercalate "," (map (C.unpack . encode) l) ++ "]"
+cMenTOstr :: [CleanMention] -> String
+cMenTOstr l = "[" ++ intercalate "," (map (C.unpack . encode) l) ++ "]"
 
-strTOcEnts :: String -> Either String [CleanEntity]
-strTOcEnts s = eitherDecode (C.pack s) :: Either String [CleanEntity]
-
-cleanEnts :: [Entity] -> [CleanEntity]
-cleanEnts = map (\(Entity _ t (m:_) _) -> CleanEntity t (location m) (confidence m))
+strTOcMen :: String -> Either String [CleanMention]
+strTOcMen s = eitherDecode (C.pack s) :: Either String [CleanMention]
 
 
 -- Conllu manipulation
