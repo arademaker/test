@@ -81,47 +81,50 @@ merge x'@(x:xs) y'@(y:ys)
 -- or the texts are different. Note that the return can also be Just
 -- [], meaning that no annotation were available.
 
-validation :: Either String N.Document -> Either String W.Document -> Maybe [Annotation]
+validation :: Either String N.Document -> Either String W.Document -> Either String [Annotation]
 validation (Right docNLU) (Right docWKS) =
   if checkTexts docWKS docNLU
-    then Just (merge aN aW)
-    else Nothing
+    then Right (merge aN aW)
+    else Left "Texts are not equal!"
   where
     aN = sortOn anBegin (nluAnn docNLU)
     aW = sortOn anBegin (wksAnn docWKS)
-validation _ _ = Nothing
+validation (Left doc) _ = Left doc
+validation _ (Left doc) = Left doc
 
+-- bug: fix me!!
 addNullSpace :: Annotation -> Annotation
 addNullSpace ann =
-  if (anSource ann) == ["WKS"]
-    then ann 
-           { anType = ["-"] ++ anType ann
-           , anSource = ["-"] ++ anSource ann
-           }
-    else ann
-           { anType = anType ann ++ ["-"]
-           , anSource = anSource ann ++ ["-"]
-           }
+  if anSource ann == ["WKS"]
+    then ann {anType = "-" : anType ann, anSource = "-" : anSource ann}
+    else ann {anType = anType ann ++ ["-"], anSource = anSource ann ++ ["-"]}
 
--- Mudar essa func
-lineCsv :: Annotation -> String
-lineCsv a = intercalate "," $ [(show (anBegin a)), (show (anEnd a))] ++ (anType a) ++ (anSource a) ++ ["\n"]
+lineCSV :: Annotation -> String
+lineCSV a = intercalate "," $ [show (anBegin a),show (anEnd a)] ++ anType a ++ anSource a
 
+createCSV :: [String] -> IO ()
+createCSV [fnNLU, fnWKS] = do
+  nlu <- N.readJSON fnNLU
+  wks <- W.readJSON fnWKS
+  aux (validation nlu wks)
+ where
+   aux (Right as) = mapM_ (putStrLn . lineCSV) as
+   aux (Left as) = putStrLn as
 
-createCSV :: [Annotation] -> FilePath -> IO ()
-createCSV ann file = writeFile file $ concatMap lineCsv ann
+msg = " Usage: \n\
+      \  test-ner -c json-nlu json-wks  => csv file in the STDOUT \n "
+   
+usage = putStrLn msg
 
+parse ["-h"]    = usage >> exitSuccess
+parse ("-c":ls) = createCSV ls >> exitSuccess
+parse _         = usage >> exitFailure
+
+slice :: Int -> Int -> String -> String
+slice a b = take (b - a) . drop a
 
 main :: IO ()
-main = putStrLn "OK"
+main = do
+  as <- getArgs
+  parse as
 
-{-
-
-saida são linhas com:
-
-(1) begin,end,type,-,source,-
-(2) begin,end,-,type,-,source
-(3) begin,end,type1,type2,source1,source2
-(4) begin,end,type1,type1,source1,source2 <- equivalente a (3)
-
--}

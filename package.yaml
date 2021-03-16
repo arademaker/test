@@ -55,7 +55,7 @@ executables:
     dependencies:
     - test
 
-  test-validation:
+  test-ner:
     main:                NER.hs
     source-dirs:         app
     ghc-options:

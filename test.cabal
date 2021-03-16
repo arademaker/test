@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: bf3f26bb55b88f0667cb69c8b274bebb5c37e6b05820aa8d17c91016bfdd1387
+-- hash: 4c896802b38e3396738f3f0281d5be82a69f9e4c36250660c68bacc2485ceabe
 
 name:           test
 version:        0.1.0.0
@@ -67,16 +67,16 @@ executable test-conllu
     , text
   default-language: Haskell2010
 
-executable test-sentence
-  main-is: Sentence.hs
+executable test-ner
+  main-is: NER.hs
   other-modules:
       ConlluProcess
       Main2
-      NER
+      Sentence
       Paths_test
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is Sentence
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is NER
   build-depends:
       aeson
     , base >=4.7 && <5
@@ -89,16 +89,16 @@ executable test-sentence
     , text
   default-language: Haskell2010
 
-executable test-validation
-  main-is: NER.hs
+executable test-sentence
+  main-is: Sentence.hs
   other-modules:
       ConlluProcess
       Main2
-      Sentence
+      NER
       Paths_test
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is NER
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is Sentence
   build-depends:
       aeson
     , base >=4.7 && <5
