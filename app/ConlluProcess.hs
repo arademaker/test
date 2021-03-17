@@ -26,9 +26,11 @@ entINsent e s = out where
 rangeTOtoken :: [(ID,Maybe Range)] -> Range -> [ID]
 rangeTOtoken ls er = fst $ foldl aux ([],False) ls
   where
-    jr (Just (b,e)) = (b,e)
-    aux (l,b) (i,mr) | not b && (snd (jr mr) == fst er) = (l,True)
+    jr (Just t) = t
+    aux (l,b) (i,mr) | not b && isNothing mr = (l,b)
+                     | not b && isMember (snd (jr mr)) [fst er - 1,fst er] = (l,True)
                      | not b = (l,b)
+                     | b && isNothing mr = (i:l,b)
                      | b && (snd (jr mr) == snd er) = (i:l,False)
                      | b = (i:l,b)
 
@@ -45,7 +47,7 @@ entClean e s = CleanMention (etext e) (location $ head $ mentions e) t_range
   where
     w = _words s
     nodes = rangeTOtoken (zip (map _id w) (map cwRange w)) (entRange e)
-    t_range = map (\(SID x) -> x) [head nodes,last nodes]
+    t_range = map (\(SID x) -> x) [last nodes,head nodes]
 
 -- Update sent metadata with list of CleanEntity
 metaUpdate :: Sent -> [Entity] -> Sent
@@ -169,7 +171,7 @@ help = putStrLn msg
 
 parse ["-h"]    = help >> exitSuccess
 parse ("-m":ls) = merge ls >> exitSuccess
--- parse ("-c":ls) = check ls >> exitSuccess
+parse ("-c":ls) = check ls >> exitSuccess
 parse ls        = help >> exitFailure
     
 main :: IO ()
