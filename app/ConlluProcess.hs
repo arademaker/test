@@ -87,7 +87,7 @@ merge _ = help >> exitFailure
 
 -- Recieves nodes IDs list, nodes heads list and verifies tree consistance
 treeCheck :: [ID] -> [ID] -> Bool
-treeCheck nodes heads = length roots < 2
+treeCheck nodes heads = length roots > 1
   where
     roots = filter (\i -> not $ isMember i nodes) heads
 
@@ -116,11 +116,11 @@ headCheck ls
 
 -- Recieves CleanEntity and the nodes list to check its consistence (previous errors can be spread)
 cEntCheck :: CleanMention -> [CW AW] -> Either String Bool
-cEntCheck m l = liftA2 treeCheck tokens heads
+cEntCheck m l = liftA2 treeCheck (Right tokens) heads
   where
     rt = range_t m
-    tokens = Right $ map SID [head rt .. last rt]
-    heads = headCheck l
+    tokens = map SID [head rt .. last rt]
+    heads = headCheck $ filter (\x -> isMember (_id x) tokens) l
 
 
 
