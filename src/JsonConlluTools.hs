@@ -1,12 +1,10 @@
 module JsonConlluTools where
 
 import qualified Data.ByteString.Lazy.Char8 as C
-import Text.Regex.TDFA
-import Data.Maybe
-import Data.List
-import Data.Aeson
-import Data.Either
-import Control.Applicative
+import Text.Regex.TDFA ( (=~) )
+import Data.List ( intercalate )
+import Data.Aeson ( eitherDecode, encode )
+import Control.Applicative ( Applicative(liftA2) )
 import Conllu.Type
 import NLU
 
@@ -20,8 +18,7 @@ isMember n = foldr (\x -> (||) (n==x)) False
 
 
 -- NLU.Json manipulation
--- cMenRange :: CleanMention -> Range
--- cMenRange (CleanMention _ (b:e:_) _) = (b,e)
+
 entRange :: Entity -> Range
 entRange (Entity _ _ ((Mention _ [a,b] _):_) _) = (a,b)
 

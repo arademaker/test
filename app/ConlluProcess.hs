@@ -1,12 +1,12 @@
 module ConlluProcess where
 
 
-import Data.Maybe
-import Data.Either
-import Control.Applicative
-import System.Environment 
-import System.Exit
-import Conllu.IO
+import Data.Maybe ( catMaybes, isNothing, mapMaybe )
+import Data.Either ( lefts, rights )
+import Control.Applicative ( Applicative(liftA2) )
+import System.Environment ( getArgs ) 
+import System.Exit ( exitFailure, exitSuccess )
+import Conllu.IO ( readConlluFile, writeConlluFile )
 import Conllu.Type
 import NLU
 import JsonConlluTools
@@ -21,8 +21,7 @@ entINsent e s = out where
   sRange = catMaybes [sentRange s]
   out = if null sRange then Nothing else Just $ isSubrange (entRange e) (head sRange)
 
-
-
+-- Find t-range given (ID,Maybe Range) tuple list and entity range (284,300)
 rangeTOtoken :: [(ID,Maybe Range)] -> Range -> [ID]
 rangeTOtoken ls er = fst $ foldl aux ([],False) ls
   where
@@ -33,13 +32,6 @@ rangeTOtoken ls er = fst $ foldl aux ([],False) ls
                      | b && isNothing mr = (i:l,b)
                      | b && (fst (jr mr) >= snd er) = (l,False)
                      | b = (i:l,b)
-
--- Find t-range given (ID,Maybe Range) tuple list and entity range (284,300)     [(169,181)]
--- rangeTOtoken :: [(ID,Maybe Range)] -> Range -> [ID]
--- rangeTOtoken [] _ = []
--- rangeTOtoken (x:xs) er | (>>=) (snd x) (\(_,k) -> Just (k < fst er)) == Just True = rangeTOtoken xs er -- prevRange
---                        | (>>=) (snd x) (\(k,_) -> Just (k > snd er)) == Just True = [] -- outRange
---                        | otherwise = fst x : rangeTOtoken xs er
 
 -- Transform Entity to CleanMention using its Sent
 entClean :: Entity -> Sent -> CleanMention
@@ -80,8 +72,6 @@ merge _ = help >> exitFailure
 
 
 
-
-
 -- Check section
 
 
@@ -90,20 +80,6 @@ treeCheck :: [ID] -> [ID] -> Bool
 treeCheck nodes heads = length roots > 1
   where
     roots = filter (\i -> not $ isMember i nodes) heads
-
-
-{-
-
--- Filter tokens that belong to entity (returning the error if there are no tokens in the conllu)
-entTokens :: CleanEntity -> [CW AW] -> Either String [CW AW]
-entTokens e l = if null ranges then invRanges else nl
-  where
-    invRanges = Left "Conllu inválido: \n Ranges dos tokens não encontrados"
-    er = cEntRange e
-    ranges = mapMaybe cwRange l
-    nl = Right $ foldl (\l (c,r) -> if isSubrange r er then c:l else l) [] (zip l ranges)
-
--}
 
 -- Recieve nodes list to produce the heads list, returning an error if they are Nothing
 -- (_rel, that contains the head, are maybe objects at the conllu structure)
@@ -122,8 +98,6 @@ cEntCheck m l = liftA2 treeCheck (Right tokens) heads
     tokens = map SID [head rt .. last rt]
     heads = headCheck $ filter (\x -> isMember (_id x) tokens) l
 
-
-
 -- Takes list of CleanEntities and nodes list to produce a list of the unconsistent CleanEntities
 -- (spreads the possible errors and returns one if Json is not valid)
 jsonCheck :: [CleanMention] -> [CW AW] -> Either String [CleanMention]
@@ -135,16 +109,12 @@ jsonCheck es cs
     l = lefts el
     cws = zip es $ rights el
 
-
-
 -- Take Conllu.Sent to map it to a list of cleanEntities that are inconsistant
 -- (spreads the possible errors as strings)
 sentCheck :: Sent -> Either String [CleanMention]
 sentCheck s = (>>=) ment (`jsonCheck` _words s)
   where
     ment = strTOcMen $ snd $ last $ _meta s
-
-
 
 -- Recives the filepath, reads the file and map sentCheck
 check :: [FilePath] -> IO ()
@@ -160,7 +130,8 @@ check _ = help >> exitFailure
 
 
 
--- -- main interface
+-- main interface
+
 
 msg =
   " Usage: \n\
