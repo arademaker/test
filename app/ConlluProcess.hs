@@ -28,10 +28,10 @@ rangeTOtoken ls er = fst $ foldl aux ([],False) ls
   where
     jr (Just t) = t
     aux (l,b) (i,mr) | not b && isNothing mr = (l,b)
-                     | not b && isMember (snd (jr mr)) [fst er - 1,fst er] = (l,True)
+                     | not b && (fst (jr mr) == fst er) = (i:l,True)
                      | not b = (l,b)
                      | b && isNothing mr = (i:l,b)
-                     | b && (snd (jr mr) == snd er) = (i:l,False)
+                     | b && (fst (jr mr) >= snd er) = (l,False)
                      | b = (i:l,b)
 
 -- Find t-range given (ID,Maybe Range) tuple list and entity range (284,300)     [(169,181)]
