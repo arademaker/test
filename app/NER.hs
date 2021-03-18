@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric  #-}
+
 
 module NER where
 
@@ -10,6 +12,7 @@ import Data.Either
 import Data.Maybe
 import Data.List
 import Data.Ord (comparing)
+import GHC.Generics
 
 
 data Annotation =
@@ -110,6 +113,78 @@ createCSV [fnNLU, fnWKS] = do
  where
    aux (Right as) = mapM_ (putStrLn . lineCSV) as
    aux (Left as) = putStrLn as
+
+
+-- Create Json
+
+data Content = Content 
+  { pessoa_pessoa :: [TypeSent]
+  , pessoa_gpe :: [TypeSent]
+  , pessoa_data :: [TypeSent]
+  , pessoa_nan :: [TypeSent]
+  , pessoa_lei :: [TypeSent]
+  , pessoa_instituicao :: [TypeSent]
+  , gpe_pessoa :: [TypeSent]
+  , gpe_gpe :: [TypeSent]
+  , gpe_data :: [TypeSent]
+  , gpe_nan :: [TypeSent]
+  , gpe_lei :: [TypeSent]
+  , gpe_instituicao :: [TypeSent]
+  , data_pessoa :: [TypeSent]
+  , data_gpe :: [TypeSent]
+  , data_data :: [TypeSent]
+  , data_nan :: [TypeSent]
+  , data_lei :: [TypeSent]
+  , data_instituicao :: [TypeSent]
+  , nan_pessoa :: [TypeSent]
+  , nan_gpe :: [TypeSent]
+  , nan_data :: [TypeSent]
+  , nan_nan :: [TypeSent]
+  , nan_lei :: [TypeSent]
+  , nan_instituicao :: [TypeSent]
+  , lei_pessoa :: [TypeSent]
+  , lei_gpe :: [TypeSent]
+  , lei_data :: [TypeSent]
+  , lei_nan :: [TypeSent]
+  , lei_lei :: [TypeSent]
+  , lei_instituicao :: [TypeSent]
+  , instituicao_pessoa :: [TypeSent]
+  , instituicao_gpe :: [TypeSent]
+  , instituicao_data :: [TypeSent]
+  , instituicao_nan :: [TypeSent]
+  , instituicao_lei :: [TypeSent]
+  , instituicao_instituicao :: [TypeSent]
+  } deriving (Show, Generic)
+
+instance FromJSON Content
+instance ToJSON Content where
+  toEncoding = genericToEncoding defaultOptions
+
+
+data TypeSent = TypeSent
+    { word :: String
+    , sentence :: String
+    , doc :: String
+    } deriving (Show, Generic)
+
+instance FromJSON TypeSent
+instance ToJSON TypeSent where
+  toEncoding = genericToEncoding defaultOptions
+
+
+data Document = Document
+  { table :: [[Int]] 
+  , content :: Content
+  } deriving (Show, Generic)
+
+instance FromJSON Document
+instance ToJSON Document where
+  toEncoding = genericToEncoding defaultOptions
+
+createJSON :: FilePath -> Document -> IO ()
+createJSON  = encodeFile
+
+-- main
 
 msg = " Usage: \n\
       \  test-ner -c json-nlu json-wks  => csv file in the STDOUT \n "
