@@ -182,7 +182,7 @@ instance ToJSON Document where
   toEncoding = genericToEncoding defaultOptions
 
 createJSON :: FilePath -> Document -> IO ()
-createJSON  = encodeFile
+createJSON = encodeFile
 
 -- main
 
