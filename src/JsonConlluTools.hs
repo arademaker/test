@@ -5,6 +5,7 @@ import Text.Regex.TDFA ( (=~) )
 import Data.List ( intercalate )
 import Data.Aeson ( eitherDecode, encode )
 import Control.Applicative ( Applicative(liftA2) )
+import Data.Maybe ( mapMaybe )
 import Conllu.Type
 import NLU
 
@@ -40,6 +41,6 @@ cwRange :: CW AW -> Maybe Range
 cwRange w = (>>=) (_misc w) readRange
 
 sentRange :: Sent -> Maybe Range
-sentRange (Sent _ w) = liftA2 (\x y -> (fst x,snd y)) b e
+sentRange (Sent _ w) = if length l < 2 then Nothing else Just (fst $ head l,snd $ last l)
   where
-    [b,e] = [cwRange $ head w, cwRange $ last w]
+    l = mapMaybe cwRange w
