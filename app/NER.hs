@@ -14,6 +14,7 @@ import Data.Maybe
 import Data.List
 import Data.Ord (comparing)
 import GHC.Generics
+import Data.Char
 
 
 data Annotation =
@@ -189,6 +190,9 @@ createTS (x:y:xs) = getSentens x y : createTS xs
 createTS _ = [] 
   
 
+loweredString :: String -> String
+lowerString str = [ toLower loweredString | loweredString <- str]
+
 getSentens :: FilePath -> FilePath -> [TypeSent]
 getSentens pathNLU pathWKS = do
   nlu <- N.readJSON pathNLU
@@ -197,22 +201,22 @@ getSentens pathNLU pathWKS = do
   text <- W.docText docWKS
   fileName <- W.name docWKS
   return (func fileName text validation nlu wks) 
-  where 
-    func :: String -> String -> [Annotation] -> [TypeSent]
-    func name text anns = concatMap (aux name text) anns
-      where
-        aux :: String -> String -> Annotation -> TypeSent
-        aux name text ann =
-          TypeSent {
-            doc = name
-          , word = (take (anEnd - anBegin)) . (drop anBegin) text
-          , sentence = (take (10 + anEnd - anBegin)) . (drop (anBegin - 10 )) text
-          , typeType = intercalate "_" anType ann                  
-          }
+    where 
+      -- func :: String -> String -> [Annotation] -> [TypeSent] 
+      func name text anns = concatMap (aux name text) anns 
+        where 
+          -- aux :: String -> String -> Annotation -> TypeSent 
+          aux name text ann = 
+            TypeSent { 
+                doc = name 
+              , word = (take (anEnd - anBegin)) . (drop anBegin) text
+              , sentence = (take (10 + anEnd - anBegin)) . (drop (anBegin - 10 )) text
+              , typeType = intercalate "_" loweredString $ anType ann                  
+              }
 
 
-createTable :: [TypeSent] -> Document
-createTable as
+sortTypeSent :: [TypeSent] -> [[TypeSent]]
+sortTypeSent as
   let   p_p = [] 
         p_g = [] 
         p_d = []
@@ -248,8 +252,9 @@ createTable as
         n_d = []
         n_l = []
         n_i = []
-  in
-   map aux as 
+        n_n = []
+  in 
+    map aux as 
       where 
         aux a 
           | typeType a == "pessoa_pessoa" = a ++ p_p
@@ -287,51 +292,51 @@ createTable as
           | typeType a == "nan_data" = a ++ n_d 
           | typeType a == "nan_lei" = a ++ n_l 
           | typeType a == "nan_instituicao" = a ++ n_i 
+          | otherwise = return
+    
+    return [p_p, p_g, p_d, p_l, p_i, p_n, 
+            g_p, g_g, g_d, g_l, g_i, g_n,
+            d_p, d_g, d_d, d_l, d_i, d_n,
+            l_p, l_g, l_d, l_l, l_i, l_n,
+            i_p, i_g, i_d, i_l, i_i, i_n,
+            n_p, n_g, n_d, n_l, n_i, n_n]
 
-   tab = [[length p_p, length p_g, length p_d, length p_l, length p_i, length p_n],
-          [length g_p, length g_g, length g_d, length g_l, length g_i, length g_n],
-          [length d_p, length d_g, length d_d, length d_l, length d_i, length d_n],
-          [length l_p, length l_g, length l_d, length l_l, length l_i, length l_n],
-          [length i_p, length i_g, length i_d, length i_l, length i_i, length i_n],
-          [length n_p, length n_g, length n_d, length n_l, length n_i, 0 ]]
-
-   cont = Content {
-       pessoa_gpe = p_g
-     , pessoa_data = p_d
-     , pessoa_nan = p_n
-     , pessoa_lei = p_l
-     , pessoa_instituicao = p_i
-     , gpe_pessoa = g_p
-     , gpe_data = g_d
-     , gpe_nan = g_n
-     , gpe_lei = g_l
-     , gpe_instituicao = g_i
-     , data_pessoa = d_p
-     , data_gpe = d_g
-     , data_nan = d_n
-     , data_lei = d_l
-     , data_instituicao = d_i
-     , nan_pessoa = n_p
-     , nan_gpe = n_g
-     , nan_data = n_d
-     , nan_lei = n_l
-     , nan_instituicao = n_i
-     , lei_pessoa = l_p
-     , lei_gpe = l_g
-     , lei_data = l_d
-     , lei_nan = l_n
-     , lei_instituicao = l_i
-     , instituicao_pessoa = i_p
-     , instituicao_gpe = i_g
-     , instituicao_data = i_d
-     , instituicao_nan = i_n
-     , instituicao_lei = i_l
-    }
-
-   return (Document { table = tab, content = cont })
-
-
-
+createTable :: [[TypeSent]] -> Document
+createTable as = Document { table = tab, content = cont }
+  where 
+    tab = map length as
+    cont = Content {
+        pessoa_gpe         = as !! 1
+      , pessoa_data        = as !! 2
+      , pessoa_lei         = as !! 3
+      , pessoa_instituicao = as !! 4
+      , pessoa_nan         = as !! 5
+      , gpe_pessoa         = as !! 6
+      , gpe_data           = as !! 8
+      , gpe_lei            = as !! 9
+      , gpe_instituicao    = as !! 10
+      , gpe_nan            = as !! 11
+      , data_pessoa        = as !! 12
+      , data_gpe           = as !! 13
+      , data_lei           = as !! 15
+      , data_instituicao   = as !! 16
+      , data_nan           = as !! 17
+      , lei_pessoa         = as !! 18
+      , lei_gpe            = as !! 19
+      , lei_data           = as !! 20
+      , lei_instituicao    = as !! 22
+      , lei_nan            = as !! 23
+      , instituicao_pessoa = as !! 24
+      , instituicao_gpe    = as !! 25
+      , instituicao_data   = as !! 26
+      , instituicao_lei    = as !! 27
+      , instituicao_nan    = as !! 29
+      , nan_pessoa         = as !! 30
+      , nan_gpe            = as !! 31
+      , nan_data           = as !! 32
+      , nan_lei            = as !! 33
+      , nan_instituicao    = as !! 34
+      }
 
 
 
@@ -346,8 +351,8 @@ parse ["-h"]    = usage >> exitSuccess
 parse ("-c":ls) = createCSV ls >> exitSuccess
 parse _         = usage >> exitFailure
 
-slice :: Int -> Int -> String -> String
-slice a b = take (b - a) . drop a
+-- slice :: Int -> Int -> String -> String
+-- slice a b = take (b - a) . drop a
 
 main :: IO ()
 main = do
