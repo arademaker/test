@@ -177,37 +177,30 @@ instance FromJSON Document
 instance ToJSON Document where
   toEncoding = genericToEncoding defaultOptions
 
-createJSON :: FilePath -> Document -> IO ()
-createJSON = encodeFile
+
 
 -- create json
+
 createDoc :: [String] -> FilePath -> IO()
-createDoc as path = createJSON path $createTable $ sortTypeSent (createTS as)
+createDoc as path = encodeFile path $createTable $ sortTypeSent (createTS as)
+ where
+  createTS (x:y:xs) = getSentens (N.readJSON x) (W.readJSON y) ++ createTS xs
+  createTS _ = []
 
 
-createTS :: [String] -> [TypeSent]
-createTS (x:y:xs) = getSentens x y ++ createTS xs
-createTS _ = []
 
-
--- lowerString :: String -> String
--- lowerString str = toLower loweredString | loweredString <- str
-
-getSentens :: String -> String -> [TypeSent]
-getSentens pathNLU pathWKS = do
-  nlu <- [N.readJSON pathNLU]
-  wks <- [W.readJSON pathWKS]
-  let [text,fileName] = getText wks
-  return $ map (aux fileName text) $ Right $ validation nlu wks
-    where
-      --aux :: String -> String -> Annotation -> TypeSent 
-      aux name text ann =
-        TypeSent {
+getSentens :: Either String N.Document -> Either String W.Document-> [TypeSent]
+getSentens nlu wks = map (createType fileName text) $ fromRight [] (validation nlu wks)
+ where [text,fileName] = getText wks
+   
+createType :: String -> String -> Annotation -> TypeSent
+createType name text ann =
+  TypeSent {
             doc = name
           , word = subStr (anBegin ann) (anEnd ann) text
           , sentence = subStr (anBegin ann - 10) (anEnd ann + 10 ) text
           , typeType = map toLower $ intercalate "_" $ anType ann
-          }
+          } 
 
 subStr :: Int -> Int -> String -> String
 subStr a b text = take (b - a) (drop a text)
