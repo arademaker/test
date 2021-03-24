@@ -101,8 +101,8 @@ validation _ (Left doc) = Left doc
 addNullSpace :: Annotation -> Annotation
 addNullSpace ann =
   if anSource ann == ["WKS"]
-    then ann {anType = "-" : anType ann, anSource = "-" : anSource ann}
-    else ann {anType = anType ann ++ ["-"], anSource = anSource ann ++ ["-"]}
+    then ann {anType = "nan" : anType ann, anSource = "nan" : anSource ann}
+    else ann {anType = anType ann ++ ["nan"], anSource = anSource ann ++ ["nan"]}
 
 lineCSV :: Annotation -> String
 lineCSV a = intercalate "," $ [show (anBegin a),show (anEnd a)] ++ anType a ++ anSource a
@@ -180,13 +180,13 @@ instance ToJSON Document where
 
 
 -- create json
-
+{-
 createDoc :: [String] -> FilePath -> IO()
 createDoc as path = encodeFile path $createTable $ sortTypeSent (createTS as)
  where
   createTS (x:y:xs) = getSentens (N.readJSON x) (W.readJSON y) ++ createTS xs
   createTS _ = []
-
+-}
 
 
 getSentens :: Either String N.Document -> Either String W.Document-> [TypeSent]
@@ -212,6 +212,23 @@ getText _ = []
 
 sortTypeSent :: [TypeSent] -> [[TypeSent]]
 sortTypeSent ts = groupBy (\tsa tsb -> typeType tsa == typeType tsb) $ sortOn typeType ts
+
+nullList :: [[TypeSent]] -> [[TypeSent]]
+nullList = addNullList types 
+ where
+   types = ["data_data","data_gpe","data_instituicao","data_lei","data_nan","data_pessoa",
+            "gpe_data","gpe_gpe","gpe_instituicao","gpe_lei","gpe_nan","gpe_pessoa",
+            "instituicao_data","instituicao_gpe","instituicao_instituicao","instituicao_lei","instituicao_nan","instituicao_pessoa",
+            "lei_data","lei_gpe","lei_instituicao","lei_lei","lei_nan","lei_pessoa",
+            "nan_data","nan_gpe","nan_instituicao","nan_lei","nan_nan","nan_pessoa",
+            "pessoa_data","pessoa_gpe","pessoa_instituicao","pessoa_lei","pessoa_nan","pessoa_pessoa"] 
+
+addNullList :: [String] -> [[TypeSent]] -> [[TypeSent]]
+addNullList (a:as) (t:ts) 
+  | typeType (head t) == a = t : addNullList as ts
+  | otherwise = [] : addNullList as (t:ts)
+addNullList (a:as) [] = [] : addNullList as []
+addNullList [] _ = return []
 
 createTable :: [[TypeSent]] -> Document
 createTable as = Document { table = tab, content = cont }
