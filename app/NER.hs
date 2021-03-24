@@ -26,7 +26,7 @@ data Annotation =
     }
   deriving (Eq, Show)
 
-  
+
 -- receive json-WKS json-NLU and check if the texts are the same
 checkTexts :: W.Document -> N.Document -> Bool
 checkTexts x y = W.docText x == N.analyzed_text y
@@ -40,8 +40,8 @@ wksAnn doc = map aux (W.mentions doc)
         , anBegin = W.menBegin m
         , anEnd = W.menEnd m
         , anSource = ["WKS"]
-        } 
-            
+        }
+
 nluAnn :: N.Document -> [Annotation]
 nluAnn doc = concatMap aux1 (N.entities doc)
   where
@@ -64,7 +64,7 @@ merge1 a b =
              , anSource = anSource a ++ anSource b
              }
     else Nothing
-              
+
 
 -- receive annotations list of annotations from the WKS GT and NLU
 -- return the consolidation of the annotations.
@@ -80,7 +80,7 @@ merge x'@(x:xs) y'@(y:ys)
   where
     res = merge1 x y
 
-    
+
 -- Receive files WKS and NLU and return a list of diffs. The return
 -- Nothing means that either the inputs are Left (error in the parser)
 -- or the texts are different. Note that the return can also be Just
@@ -118,7 +118,7 @@ createCSV [fnNLU, fnWKS] = do
 
 
 
-data Content = Content 
+data Content = Content
   { pessoa_gpe :: [TypeSent]
   , pessoa_data :: [TypeSent]
   , pessoa_lei :: [TypeSent]
@@ -169,7 +169,7 @@ instance ToJSON TypeSent where
 
 
 data Document = Document
-  { table :: [[Int]] 
+  { table :: [Int]
   , content :: Content
   } deriving (Show, Generic)
 
@@ -181,45 +181,45 @@ createJSON :: FilePath -> Document -> IO ()
 createJSON = encodeFile
 
 -- create json
-createDoc :: [FilePath] -> FilePath -> IO()
-createDoc as path = createJSON path (createTable . createTS as)
+createDoc :: [String] -> FilePath -> IO()
+createDoc as path = createJSON path $createTable $ sortTypeSent (createTS as)
 
 
-createTS :: [FilePath] -> [TypeSent]
-createTS (x:y:xs) = getSentens x y : createTS xs
-createTS _ = [] 
-  
+createTS :: [String] -> [TypeSent]
+createTS (x:y:xs) = getSentens x y ++ createTS xs
+createTS _ = []
+
 
 -- lowerString :: String -> String
 -- lowerString str = toLower loweredString | loweredString <- str
 
-getSentens :: FilePath -> FilePath -> [TypeSent]
+getSentens :: String -> String -> [TypeSent]
 getSentens pathNLU pathWKS = do
   nlu <- [N.readJSON pathNLU]
   wks <- [W.readJSON pathWKS]
-  (Right docWKS) <- [W.readJSON pathWKS]
-  text <- W.docText docWKS
-  fileName <- W.name docWKS
-  return $ func fileName text $ validation nlu wks 
-    where 
-      -- func :: String -> String -> [Annotation] -> [TypeSent] 
-      func name text anns = concatMap (aux name text) anns 
-        where 
-          -- aux :: String -> String -> Annotation -> TypeSent 
-          aux name text ann = 
-            TypeSent { 
-                doc = name 
-              , word = take ((anEnd ann) - (anBegin ann)) . (drop (anBegin ann)) text
-              , sentence = take (10 + (anEnd ann) - (anBegin ann)) . (drop ((anBegin ann) - 10 )) text
-              , typeType = map toLower $ intercalate "_" $ anType ann                 
-              }
+  let [text,fileName] = getText wks
+  return $ map (aux fileName text) $ Right $ validation nlu wks
+    where
+      --aux :: String -> String -> Annotation -> TypeSent 
+      aux name text ann =
+        TypeSent {
+            doc = name
+          , word = take (anEnd ann - anBegin ann) . drop (anBegin ann) text
+          , sentence = take (10 + anEnd ann - anBegin ann) . drop (anBegin ann - 10 ) text
+          , typeType = map toLower $ intercalate "_" $ anType ann
+          }
+
+getText :: Either String W.Document -> [String]
+getText (Right doc) = [W.docText doc, W.name doc]
+getText _ = []
+
 
 sortTypeSent :: [TypeSent] -> [[TypeSent]]
 sortTypeSent ts = groupBy (\tsa tsb -> typeType tsa == typeType tsb) $ sortOn typeType ts
 
 createTable :: [[TypeSent]] -> Document
 createTable as = Document { table = tab, content = cont }
-  where 
+  where
     tab = map length as
     cont = Content {
         pessoa_gpe         = as !! 1
@@ -260,7 +260,7 @@ createTable as = Document { table = tab, content = cont }
 
 msg = " Usage: \n\
       \  test-ner -c json-nlu json-wks  => csv file in the STDOUT \n "
-   
+
 usage = putStrLn msg
 
 parse ["-h"]    = usage >> exitSuccess
