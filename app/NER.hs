@@ -1,5 +1,4 @@
-{-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE DeriveGeneric  #-}
+{-# LANGUAGE DeriveGeneric, BlockArguments #-}
 
 
 module NER where
@@ -11,10 +10,11 @@ import System.Exit
 import System.Environment
 import Data.Either
 import Data.Maybe
-import Data.List
+import Data.List ( groupBy, intercalate, sortOn )
 import Data.Ord (comparing)
 import GHC.Generics
-import Data.Char
+import Data.Char ( toLower )
+import Data.Text ( unpack, pack)
 
 
 data Annotation =
@@ -190,17 +190,17 @@ createTS (x:y:xs) = getSentens x y : createTS xs
 createTS _ = [] 
   
 
-loweredString :: String -> String
-lowerString str = [ toLower loweredString | loweredString <- str]
+-- lowerString :: String -> String
+-- lowerString str = toLower loweredString | loweredString <- str
 
 getSentens :: FilePath -> FilePath -> [TypeSent]
 getSentens pathNLU pathWKS = do
-  nlu <- N.readJSON pathNLU
-  wks <- W.readJSON pathWKS
-  (Right docWKS) <- W.readJSON pathWKS
+  nlu <- [N.readJSON pathNLU]
+  wks <- [W.readJSON pathWKS]
+  (Right docWKS) <- [W.readJSON pathWKS]
   text <- W.docText docWKS
   fileName <- W.name docWKS
-  return (func fileName text validation nlu wks) 
+  return $ func fileName text $ validation nlu wks 
     where 
       -- func :: String -> String -> [Annotation] -> [TypeSent] 
       func name text anns = concatMap (aux name text) anns 
@@ -209,97 +209,13 @@ getSentens pathNLU pathWKS = do
           aux name text ann = 
             TypeSent { 
                 doc = name 
-              , word = (take (anEnd - anBegin)) . (drop anBegin) text
-              , sentence = (take (10 + anEnd - anBegin)) . (drop (anBegin - 10 )) text
-              , typeType = intercalate "_" loweredString $ anType ann                  
+              , word = take ((anEnd ann) - (anBegin ann)) . (drop (anBegin ann)) text
+              , sentence = take (10 + (anEnd ann) - (anBegin ann)) . (drop ((anBegin ann) - 10 )) text
+              , typeType = map toLower $ intercalate "_" $ anType ann                 
               }
 
-
 sortTypeSent :: [TypeSent] -> [[TypeSent]]
-sortTypeSent as
-  let   p_p = [] 
-        p_g = [] 
-        p_d = []
-        p_n = []
-        p_l = []
-        p_i = []
-        g_p = []
-        g_g = []
-        g_d = []
-        g_n = []
-        g_l = []
-        g_i = []
-        d_p = []
-        d_g = []
-        d_d = []
-        d_n = []
-        d_l = []
-        d_i = []
-        l_p = []
-        l_g = []
-        l_d = []
-        l_n = []
-        l_l = []
-        l_i = []
-        i_p = []
-        i_g = []
-        i_d = []
-        i_n = []
-        i_l = []
-        i_i = []
-        n_p = []
-        n_g = []
-        n_d = []
-        n_l = []
-        n_i = []
-        n_n = []
-  in 
-    map aux as 
-      where 
-        aux a 
-          | typeType a == "pessoa_pessoa" = a ++ p_p
-          | typeType a == "pessoa_gpe" = a ++ p_g
-          | typeType a == "pessoa_data" = a ++ p_d 
-          | typeType a == "pessoa_lei" = a ++ p_l 
-          | typeType a == "pessoa_instituicao" = a ++ p_i 
-          | typeType a == "pessoa_nan" = a ++ p_n 
-          | typeType a == "gpe_pessoa" = a ++ g_p 
-          | typeType a == "gpe_gpe" = a ++ g_g
-          | typeType a == "gpe_data" = a ++ g_d 
-          | typeType a == "gpe_lei" = a ++ g_l 
-          | typeType a == "gpe_instituicao" = a ++ g_i 
-          | typeType a == "gpe_nan" = a ++ g_n 
-          | typeType a == "data_pessoa" = a ++ d_p 
-          | typeType a == "data_gpe" = a ++ d_g 
-          | typeType a == "data_data" = a ++ d_d
-          | typeType a == "data_lei" = a ++ d_l 
-          | typeType a == "data_instituicao" = a ++ d_i 
-          | typeType a == "data_nan" = a ++ d_n 
-          | typeType a == "lei_pessoa" = a ++ l_p 
-          | typeType a == "lei_gpe" = a ++ l_g 
-          | typeType a == "lei_data" = a ++ l_d 
-          | typeType a == "lei_lei" = a ++ l_l
-          | typeType a == "lei_instituicao" = a ++ l_i 
-          | typeType a == "lei_nan" = a ++ l_n 
-          | typeType a == "instituicao_pessoa" = a ++ i_p 
-          | typeType a == "instituicao_gpe" = a ++ i_g 
-          | typeType a == "instituicao_data" = a ++ i_d 
-          | typeType a == "instituicao_lei" = a ++ i_l 
-          | typeType a == "instituicao_instituicao" = a ++ i_i
-          | typeType a == "instituicao_nan" = a ++ i_n 
-          | typeType a == "nan_pessoa" = a ++ n_p 
-          | typeType a == "nan_gpe" = a ++ n_g 
-          | typeType a == "nan_data" = a ++ n_d 
-          | typeType a == "nan_lei" = a ++ n_l 
-          | typeType a == "nan_instituicao" = a ++ n_i 
-          | otherwise = return
-    
-    return [p_p, p_g, p_d, p_l, p_i, p_n, 
-            g_p, g_g, g_d, g_l, g_i, g_n,
-            d_p, d_g, d_d, d_l, d_i, d_n,
-            l_p, l_g, l_d, l_l, l_i, l_n,
-            i_p, i_g, i_d, i_l, i_i, i_n,
-            n_p, n_g, n_d, n_l, n_i, n_n]
+sortTypeSent ts = groupBy (\tsa tsb -> typeType tsa == typeType tsb) $ sortOn typeType ts
 
 createTable :: [[TypeSent]] -> Document
 createTable as = Document { table = tab, content = cont }
