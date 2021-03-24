@@ -204,10 +204,13 @@ getSentens pathNLU pathWKS = do
       aux name text ann =
         TypeSent {
             doc = name
-          , word = take (anEnd ann - anBegin ann) . drop (anBegin ann) text
-          , sentence = take (10 + anEnd ann - anBegin ann) . drop (anBegin ann - 10 ) text
+          , word = subStr (anBegin ann) (anEnd ann) text
+          , sentence = subStr (anBegin ann - 10) (anEnd ann + 10 ) text
           , typeType = map toLower $ intercalate "_" $ anType ann
           }
+
+subStr :: Int -> Int -> String -> String
+subStr a b text = take (b - a) (drop a text)
 
 getText :: Either String W.Document -> [String]
 getText (Right doc) = [W.docText doc, W.name doc]
