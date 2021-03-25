@@ -86,16 +86,16 @@ merge x'@(x:xs) y'@(y:ys)
 -- or the texts are different. Note that the return can also be Just
 -- [], meaning that no annotation were available.
 
-validation :: Either String N.Document -> Either String W.Document -> Either String [Annotation]
-validation (Right docNLU) (Right docWKS) =
+validation :: N.Document -> W.Document -> Either String [Annotation]
+validation docNLU docWKS =
   if checkTexts docWKS docNLU
     then Right (merge aN aW)
     else Left "Texts are not equal!"
   where
     aN = sortOn anBegin (nluAnn docNLU)
     aW = sortOn anBegin (wksAnn docWKS)
-validation (Left doc) _ = Left doc
-validation _ (Left doc) = Left doc
+--validation (Left doc) _ = Left doc
+--validation _ (Left doc) = Left doc
 
 -- bug: fix me!!
 addNullSpace :: Annotation -> Annotation
@@ -107,6 +107,7 @@ addNullSpace ann =
 lineCSV :: Annotation -> String
 lineCSV a = intercalate "," $ [show (anBegin a),show (anEnd a)] ++ anType a ++ anSource a
 
+{-
 createCSV :: [String] -> IO ()
 createCSV [fnNLU, fnWKS] = do
   nlu <- N.readJSON fnNLU
@@ -115,7 +116,7 @@ createCSV [fnNLU, fnWKS] = do
  where
    aux (Right as) = mapM_ (putStrLn . lineCSV) as
    aux (Left as) = putStrLn as
-
+-}
 
 
 data Content = Content
@@ -193,15 +194,24 @@ instance ToJSON Document where
 
 -- create json
 {-
-createDoc :: [String] -> FilePath -> IO()
-createDoc as path = encodeFile path $createTable $ sortTypeSent (createTS as)
- where
-  createTS (x:y:xs) = getSentens (N.readJSON x) (W.readJSON y) ++ createTS xs
-  createTS _ = []
+func :: [String] -> [N.Document]
+func (x:xs) = rights (aux (x:xs))
+ where aux (x:xs) = 
+    nlu <- N.readJSON x
+    nlu : aux xs
 -}
 
 
-getSentens :: Either String N.Document -> Either String W.Document-> [TypeSent]
+
+createDoc :: [N.Document] -> [W.Document] -> FilePath -> IO()
+createDoc nlus wkss path = encodeFile path $ createTable $ sortTypeSent (createTS nlus wkss)
+ where
+  createTS (x:xs) (y:ys) = getSentens x y ++ createTS xs ys
+  createTS _ _ = []
+
+
+
+getSentens :: N.Document -> W.Document-> [TypeSent]
 getSentens nlu wks = map (createType fileName text) $ fromRight [] (validation nlu wks)
  where [text,fileName] = getText wks
    
@@ -217,9 +227,9 @@ createType name text ann =
 subStr :: Int -> Int -> String -> String
 subStr a b text = take (b - a) (drop a text)
 
-getText :: Either String W.Document -> [String]
-getText (Right doc) = [W.docText doc, W.name doc]
-getText _ = []
+getText :: W.Document -> [String]
+getText doc = [W.docText doc, W.name doc]
+
 
 
 sortTypeSent :: [TypeSent] -> [[TypeSent]]
@@ -241,7 +251,8 @@ addNullList (a:as) (t:ts)
   | typeType (head t) == a = t : addNullList as ts
   | otherwise = [] : addNullList as (t:ts)
 addNullList (a:as) [] = [] : addNullList as []
-addNullList [] _ = return []
+addNullList [] (t:ts) =  t:ts
+addNullList [] [] = []
 
 createTable :: [[TypeSent]] -> Document
 createTable as = Document { table = tab, content = cont }
@@ -270,7 +281,7 @@ createTable as = Document { table = tab, content = cont }
       , lei_gpe            = as !! 22
       , lei_instituicao    = as !! 23
       , lei_nan            = as !! 25
-      , lei_peiodo         = as !! 26
+      , lei_periodo         = as !! 26
       , lei_pessoa         = as !! 27
       , nan_data           = as !! 28
       , nan_gpe            = as !! 29
@@ -302,7 +313,8 @@ msg = " Usage: \n\
 usage = putStrLn msg
 
 parse ["-h"]    = usage >> exitSuccess
-parse ("-c":ls) = createCSV ls >> exitSuccess
+--parse ("-c":ls) = createCSV ls >> exitSuccess
+--parse ("-t":ns:ws:f) = createDoc ns ws (head f) >> exitSuccess
 parse _         = usage >> exitFailure
 
 -- slice :: Int -> Int -> String -> String
