@@ -15,7 +15,7 @@ import Data.Ord (comparing)
 import GHC.Generics
 import Data.Char ( toLower )
 import Data.Text ( unpack, pack)
-
+import Control.Applicative
 
 data Annotation =
   Annotation
@@ -118,79 +118,22 @@ createCSV [fnNLU, fnWKS] = do
    aux (Left as) = putStrLn as
 -}
 
+-- se continuar producao json
+-- https://hackage.haskell.org/package/aeson-1.5.6.0/docs/Data-Aeson.html
 
-data Content = Content
-  { pessoa_gpe :: [TypeSent]
-  , pessoa_data :: [TypeSent]
-  , pessoa_lei :: [TypeSent]
-  , pessoa_instituicao :: [TypeSent]
-  , pessoa_nan :: [TypeSent]
-  , pessoa_periodo :: [TypeSent]
-  , gpe_pessoa :: [TypeSent]
-  , gpe_data :: [TypeSent]
-  , gpe_lei :: [TypeSent]
-  , gpe_instituicao :: [TypeSent]
-  , gpe_nan :: [TypeSent]
-  , gpe_periodo :: [TypeSent]
-  , data_pessoa :: [TypeSent]
-  , data_gpe :: [TypeSent]
-  , data_lei :: [TypeSent]
-  , data_instituicao :: [TypeSent]
-  , data_nan :: [TypeSent]
-  , data_periodo :: [TypeSent]
-  , lei_pessoa :: [TypeSent]
-  , lei_gpe :: [TypeSent]
-  , lei_data :: [TypeSent]
-  , lei_instituicao :: [TypeSent]
-  , lei_nan :: [TypeSent]
-  , lei_periodo :: [TypeSent]
-  , instituicao_pessoa :: [TypeSent]
-  , instituicao_gpe :: [TypeSent]
-  , instituicao_data :: [TypeSent]
-  , instituicao_lei :: [TypeSent]
-  , instituicao_nan :: [TypeSent]
-  , instituicao_periodo :: [TypeSent]
-  , nan_pessoa :: [TypeSent]
-  , nan_gpe :: [TypeSent]
-  , nan_data :: [TypeSent]
-  , nan_lei :: [TypeSent]
-  , nan_instituicao :: [TypeSent]
-  , nan_periodo :: [TypeSent]
-  , periodo_pessoa :: [TypeSent]
-  , periodo_gpe :: [TypeSent]
-  , periodo_data :: [TypeSent]
-  , periodo_lei :: [TypeSent]
-  , periodo_instituicao :: [TypeSent]
-  , periodo_nan :: [TypeSent]
-  } deriving (Show, Generic)
-
-instance FromJSON Content
-instance ToJSON Content where
-  toEncoding = genericToEncoding defaultOptions
+-- possivel ideia de geracao HTML
+-- https://mmhaskell.com/blog/2020/3/9/blaze-lightweight-html-generation
 
 
-data TypeSent = TypeSent
-    { word :: String
-    , sentence :: String
-    , doc :: String
-    , typeType  :: String
-    } deriving (Show, Generic)
-
-instance FromJSON TypeSent
-instance ToJSON TypeSent where
-  toEncoding = genericToEncoding defaultOptions
-
-
-data Document = Document
-  { table :: [Int]
-  , content :: Content
-  } deriving (Show, Generic)
-
-instance FromJSON Document
-instance ToJSON Document where
-  toEncoding = genericToEncoding defaultOptions
-
-
+data MentionC =
+  MentionC
+    { mention :: String
+    , context :: String
+    , span    :: (Int, Int)
+    , doc     :: String
+    , compare :: (String, String)
+    }
+  deriving (Show, Generic)
 
 -- create json
 {-
@@ -201,7 +144,12 @@ func (x:xs) = rights (aux (x:xs))
     nlu : aux xs
 -}
 
-
+--  m a -> m b -> (a -> b -> c) -> m c
+test = do
+  a <- W.readJSON "/Users/ar/work/cpdoc/dhbb-nlp/ner/wks/gt/72ba3590-8cd9-11eb-9b31-bf56d6e1e183-1.json"
+  b <- N.readJSON "/Users/ar/work/cpdoc/dhbb-nlp/ner/220.json"
+  return (liftA2 getSentens b a)
+      
 
 createDoc :: [N.Document] -> [W.Document] -> FilePath -> IO()
 createDoc nlus wkss path = encodeFile path $ createTable $ sortTypeSent (createTS nlus wkss)
@@ -235,16 +183,6 @@ getText doc = [W.docText doc, W.name doc]
 sortTypeSent :: [TypeSent] -> [[TypeSent]]
 sortTypeSent ts = groupBy (\tsa tsb -> typeType tsa == typeType tsb) $ sortOn typeType ts
 
-nullList :: [[TypeSent]] -> [[TypeSent]]
-nullList = addNullList types 
- where
-   types = ["data_data","data_gpe","data_instituicao","data_lei","data_nan","data_periodo","data_pessoa",
-            "gpe_data","gpe_gpe","gpe_instituicao","gpe_lei","gpe_nan","gpe_periodo","gpe_pessoa",
-            "instituicao_data","instituicao_gpe","instituicao_instituicao","instituicao_lei","instituicao_nan","instituicao_periodo","instituicao_pessoa",
-            "lei_data","lei_gpe","lei_instituicao","lei_lei","lei_nan","lei_periodo","lei_pessoa",
-            "nan_data","nan_gpe","nan_instituicao","nan_lei","nan_nan","nan_periodo","nan_pessoa",
-            "periodo_data","periodo_gpe","periodo_instituicao","periodo_lei","nan_nan","periodo_periodo","periodo_pessoa",
-            "pessoa_data","pessoa_gpe","pessoa_instituicao","pessoa_lei","pessoa_nan","pessoa_periodo","pessoa_pessoa"] 
 
 addNullList :: [String] -> [[TypeSent]] -> [[TypeSent]]
 addNullList (a:as) (t:ts) 
@@ -253,56 +191,6 @@ addNullList (a:as) (t:ts)
 addNullList (a:as) [] = [] : addNullList as []
 addNullList [] (t:ts) =  t:ts
 addNullList [] [] = []
-
-createTable :: [[TypeSent]] -> Document
-createTable as = Document { table = tab, content = cont }
-  where
-    tab = map length as
-    cont = Content {
-        data_gpe           = as !! 1
-      , data_instituicao   = as !! 2
-      , data_lei           = as !! 3
-      , data_nan           = as !! 4
-      , data_periodo       = as !! 5
-      , data_pessoa        = as !! 6
-      , gpe_data           = as !! 7
-      , gpe_instituicao    = as !! 9
-      , gpe_lei            = as !! 10
-      , gpe_nan            = as !! 11
-      , gpe_periodo        = as !! 12
-      , gpe_pessoa         = as !! 13
-      , instituicao_data   = as !! 14
-      , instituicao_gpe    = as !! 15
-      , instituicao_lei    = as !! 17
-      , instituicao_nan    = as !! 18
-      , instituicao_periodo = as !! 19
-      , instituicao_pessoa = as !! 20
-      , lei_data           = as !! 21
-      , lei_gpe            = as !! 22
-      , lei_instituicao    = as !! 23
-      , lei_nan            = as !! 25
-      , lei_periodo         = as !! 26
-      , lei_pessoa         = as !! 27
-      , nan_data           = as !! 28
-      , nan_gpe            = as !! 29
-      , nan_instituicao    = as !! 30
-      , nan_lei            = as !! 31
-      , nan_periodo        = as !! 33
-      , nan_pessoa         = as !! 34
-      , periodo_data       = as !! 35
-      , periodo_gpe        = as !! 36
-      , periodo_instituicao = as !! 37
-      , periodo_lei         = as !! 38
-      , periodo_nan         = as !! 39
-      , periodo_pessoa     = as !! 41
-      , pessoa_data        = as !! 42
-      , pessoa_gpe         = as !! 43
-      , pessoa_instituicao = as !! 44
-      , pessoa_lei         = as !! 45
-      , pessoa_nan         = as !! 46
-      , pessoa_periodo     = as !! 47
-      }
-
 
 
 -- main
