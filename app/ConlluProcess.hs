@@ -1,12 +1,12 @@
 module ConlluProcess where
 
 
-import Data.Maybe
-import Data.Either
-import Control.Applicative
-import System.Environment 
-import System.Exit
-import Conllu.IO
+import Data.Maybe ( catMaybes, isNothing, mapMaybe )
+import Data.Either ( lefts, rights )
+import Control.Applicative ( Applicative(liftA2) )
+import System.Environment ( getArgs ) 
+import System.Exit ( exitFailure, exitSuccess )
+import Conllu.IO ( readConlluFile, writeConlluFile )
 import Conllu.Type
 import NLU
 import JsonConlluTools
@@ -14,21 +14,42 @@ import JsonConlluTools
 
 -- File Merge Section
 
+
 -- Verify if CleanEntity belongs to Sent
-cEntINsent :: CleanEntity -> Sent -> Maybe Bool 
-cEntINsent ce s = out where
+entINsent :: Entity -> Sent -> Maybe Bool 
+entINsent e s = out where
   sRange = catMaybes [sentRange s]
-  out = if null sRange then Nothing else Just $ isSubrange (cEntRange ce) (head sRange)
+  out = if null sRange then Nothing else Just $ isSubrange (entRange e) (head sRange)
+
+-- Find t-range given (ID,Maybe Range) tuple list and entity range (284,300)
+rangeTOtoken :: [(ID,Maybe Range)] -> Range -> [ID]
+rangeTOtoken ls er = fst $ foldl aux ([],False) ls
+  where
+    jr (Just t) = t
+    aux (l,b) (i,mr) | not b && isNothing mr = (l,b)
+                     | not b && (fst (jr mr) == fst er) = (i:l,True)
+                     | not b = (l,b)
+                     | b && isNothing mr = (i:l,b)
+                     | b && (fst (jr mr) >= snd er) = (l,False)
+                     | b = (i:l,b)
+
+-- Transform Entity to CleanMention using its Sent
+entClean :: Entity -> Sent -> CleanMention
+entClean e s = CleanMention (etext e) (location $ head $ mentions e) t_range
+  where
+    w = _words s
+    nodes = rangeTOtoken (zip (map _id w) (map cwRange w)) (entRange e)
+    t_range = map (\(SID x) -> x) [last nodes,head nodes]
 
 -- Update sent metadata with list of CleanEntity
-metaUpdate :: Sent -> [CleanEntity] -> Sent
-metaUpdate s e = Sent (_meta s ++ [("entities",cEntTOstr e)]) (_words s)
+metaUpdate :: Sent -> [Entity] -> Sent
+metaUpdate s e = Sent (_meta s ++ [("entities",cMenTOstr $ map (`entClean` s) e)]) (_words s)
 
 -- Filter CleanEntity list with the ones that belong to the Sent given
-entFilter :: [CleanEntity] -> Sent -> [CleanEntity]
+entFilter :: [Entity] -> Sent -> [Entity]
 entFilter [] _ = []
 entFilter (x:xs) s
-  | cEntINsent x s == Just False = entFilter xs s
+  | entINsent x s == Just False = entFilter xs s
   | otherwise = x:entFilter xs s
 
 -- Recieves the NLU.Document (or an reading error), a Conllu.Doc and a out_file path
@@ -36,10 +57,10 @@ entFilter (x:xs) s
 addJson :: Either String Document -> Doc -> FilePath -> IO ()
 addJson (Left s) _ _ = putStrLn $ "JSON INVÁLIDO: \n" ++ s
 addJson (Right js) sents outpath 
-  | isNothing $ sentRange $ head sents = putStrLn "CONLLU INVÁLIDO: \n Ranges de sentenças não encontrados"
+  | null $ mapMaybe sentRange sents = putStrLn "CONLLU INVÁLIDO: \n Ranges de sentenças não encontrados"
   | otherwise = writeConlluFile outpath outConll
   where
-    outConll = map (\s -> metaUpdate s $ entFilter (cleanEnts $ entities js) s) sents
+    outConll = map (\s -> metaUpdate s $ entFilter (entities js) s) sents
 
 -- Recieves the filepaths, opens the files and calls addJson
 merge :: [FilePath] -> IO ()
@@ -47,6 +68,7 @@ merge [jspath, clpath, outpath] = do
   esd <- readJSON jspath
   d <- readConlluFile clpath
   addJson esd d outpath
+merge _ = help >> exitFailure
 
 
 
@@ -55,19 +77,10 @@ merge [jspath, clpath, outpath] = do
 
 -- Recieves nodes IDs list, nodes heads list and verifies tree consistance
 treeCheck :: [ID] -> [ID] -> Bool
-treeCheck nodes heads = length roots < 2
+treeCheck nodes heads = length roots > 1
   where
     roots = filter (\i -> not $ isMember i nodes) heads
 
--- Filter tokens that belong to entity (returning the error if there are no tokens in the conllu)
-entTokens :: CleanEntity -> [CW AW] -> Either String [CW AW]
-entTokens e l = if null ranges then invRanges else nl
-  where
-    invRanges = Left "Conllu inválido: \n Ranges dos tokens não encontrados"
-    er = cEntRange e
-    ranges = mapMaybe cwRange l
-    nl = Right $ foldl (\l (c,r) -> if isSubrange r er then c:l else l) [] (zip l ranges)
-    
 -- Recieve nodes list to produce the heads list, returning an error if they are Nothing
 -- (_rel, that contains the head, are maybe objects at the conllu structure)
 headCheck :: [CW AW] -> Either String [ID]
@@ -78,16 +91,16 @@ headCheck ls
     rel = mapMaybe _rel ls
 
 -- Recieves CleanEntity and the nodes list to check its consistence (previous errors can be spread)
-cEntCheck :: CleanEntity -> [CW AW] -> Either String Bool
-cEntCheck e l = liftA2 aux tokens heads
+cEntCheck :: CleanMention -> [CW AW] -> Either String Bool
+cEntCheck m l = liftA2 treeCheck (Right tokens) heads
   where
-    tokens = entTokens e l
-    heads = headCheck l
-    aux cws heads = treeCheck (map _id cws) heads
+    rt = range_t m
+    tokens = map SID [head rt .. last rt]
+    heads = headCheck $ filter (\x -> isMember (_id x) tokens) l
 
 -- Takes list of CleanEntities and nodes list to produce a list of the unconsistent CleanEntities
 -- (spreads the possible errors and returns one if Json is not valid)
-jsonCheck :: [CleanEntity] -> [CW AW] -> Either String [CleanEntity]
+jsonCheck :: [CleanMention] -> [CW AW] -> Either String [CleanMention]
 jsonCheck es cs
   | null l = Right $ foldl (\l (c,b) -> if b then c:l else l) [] cws
   | otherwise = Left $ "Conllu inválido: \n Erro no JSON: " ++ head l
@@ -98,14 +111,14 @@ jsonCheck es cs
 
 -- Take Conllu.Sent to map it to a list of cleanEntities that are inconsistant
 -- (spreads the possible errors as strings)
-sentCheck :: Sent -> Either String [CleanEntity]
-sentCheck s = (>>=) ents (`jsonCheck` _words s)
+sentCheck :: Sent -> Either String [CleanMention]
+sentCheck s = (>>=) ment (`jsonCheck` _words s)
   where
-    ents = strTOcEnts $ snd $ last $ _meta s
+    ment = strTOcMen $ snd $ last $ _meta s
 
 -- Recives the filepath, reads the file and map sentCheck
 check :: [FilePath] -> IO ()
-check (p:_) = do
+check [p] = do
   clu <- readConlluFile p
   let cs = map sentCheck clu
       l = lefts cs
@@ -113,9 +126,12 @@ check (p:_) = do
   putStrLn $ if null l
     then (if null r then "No inconsistences" else show r)
     else head l
+check _ = help >> exitFailure
 
 
--- -- main interface
+
+-- main interface
+
 
 msg =
   " Usage: \n\

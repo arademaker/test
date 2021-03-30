@@ -1,12 +1,11 @@
 module JsonConlluTools where
 
 import qualified Data.ByteString.Lazy.Char8 as C
-import Text.Regex.TDFA
-import Data.Maybe
-import Data.List
-import Data.Aeson
-import Data.Either
-import Control.Applicative
+import Text.Regex.TDFA ( (=~) )
+import Data.List ( intercalate )
+import Data.Aeson ( eitherDecode, encode )
+import Control.Applicative ( Applicative(liftA2) )
+import Data.Maybe ( mapMaybe )
 import Conllu.Type
 import NLU
 
@@ -20,17 +19,15 @@ isMember n = foldr (\x -> (||) (n==x)) False
 
 
 -- NLU.Json manipulation
-cEntRange :: CleanEntity -> Range
-cEntRange (CleanEntity _ (b:e:_) _) = (b,e)
 
-cEntTOstr :: [CleanEntity] -> String
-cEntTOstr l = "[" ++ intercalate "," (map (C.unpack . encode) l) ++ "]"
+entRange :: Entity -> Range
+entRange (Entity _ _ ((Mention _ [a,b] _):_) _) = (a,b)
 
-strTOcEnts :: String -> Either String [CleanEntity]
-strTOcEnts s = eitherDecode (C.pack s) :: Either String [CleanEntity]
+cMenTOstr :: [CleanMention] -> String
+cMenTOstr l = "[" ++ intercalate "," (map (C.unpack . encode) l) ++ "]"
 
-cleanEnts :: [Entity] -> [CleanEntity]
-cleanEnts = map (\(Entity _ t (m:_) _) -> CleanEntity t (location m) (confidence m))
+strTOcMen :: String -> Either String [CleanMention]
+strTOcMen s = eitherDecode (C.pack s) :: Either String [CleanMention]
 
 
 -- Conllu manipulation
@@ -44,6 +41,6 @@ cwRange :: CW AW -> Maybe Range
 cwRange w = (>>=) (_misc w) readRange
 
 sentRange :: Sent -> Maybe Range
-sentRange (Sent _ w) = liftA2 (\x y -> (fst x,snd y)) b e
+sentRange (Sent _ w) = if length l < 2 then Nothing else Just (fst $ head l,snd $ last l)
   where
-    [b,e] = [cwRange $ head w, cwRange $ last w]
+    l = mapMaybe cwRange w
