@@ -1,6 +1,6 @@
 module JsonConlluTools where
 
-import qualified Data.ByteString.Lazy.Char8 as C
+import qualified Data.ByteString.Lazy.UTF8 as C
 import Text.Regex.TDFA ( (=~) )
 import Data.List ( intercalate )
 import Data.Aeson ( eitherDecode, encode )
@@ -24,10 +24,10 @@ entRange :: Entity -> Range
 entRange (Entity _ _ ((Mention _ [a,b] _):_) _) = (a,b)
 
 cMenTOstr :: [CleanMention] -> String
-cMenTOstr l = "[" ++ intercalate "," (map (C.unpack . encode) l) ++ "]"
+cMenTOstr l = "[" ++ intercalate "," (map (C.toString . encode) l) ++ "]"
 
 strTOcMen :: String -> Either String [CleanMention]
-strTOcMen s = eitherDecode (C.pack s) :: Either String [CleanMention]
+strTOcMen s = eitherDecode (C.fromString s) :: Either String [CleanMention]
 
 
 -- Conllu manipulation
