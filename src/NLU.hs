@@ -3,11 +3,8 @@
 module NLU where
   
 import Data.Aeson
-import qualified Data.ByteString.Lazy as B
-import qualified Data.ByteString.Lazy.Char8 as C
-import GHC.Generics
-import Data.Either
-import Data.List
+import qualified Data.ByteString.Lazy as B (readFile)
+import GHC.Generics ( Generic )
 
 data Usage = Usage
   { text_units :: Int
@@ -112,6 +109,26 @@ instance ToJSON Entity where
   toEncoding = genericToEncoding customEntity
 
 
+data CleanMention = CleanMention
+  { cmText :: String
+  , range_c :: [Int]
+  , range_t :: [Int]
+  } deriving (Show, Generic)
+
+customCleanMention :: Options
+customCleanMention = defaultOptions {fieldLabelModifier = aux} where
+  aux x | x == "cmText" = "text"
+        | x == "range_t" = "range-t"
+        | x == "range_c" = "range-c"
+        | otherwise = x
+
+instance FromJSON CleanMention where
+  parseJSON = genericParseJSON customCleanMention
+instance ToJSON CleanMention where
+  toJSON = genericToJSON customCleanMention
+  toEncoding = genericToEncoding customCleanMention
+
+
 data Document = Document
   { usage :: Usage
   , relations ::[Relation]
@@ -125,10 +142,4 @@ instance ToJSON Document
 
 
 readJSON :: FilePath -> IO (Either String Document)
-readJSON path = (eitherDecode <$> B.readFile path) :: IO (Either String Document)
-
-entTOstr :: [Entity] -> String
-entTOstr l = "[" ++ intercalate "," (map (C.unpack . encode) l) ++ "]"
-
-strTOent :: String -> [Entity]
-strTOent s = fromRight [] (eitherDecode (C.pack s) :: Either String [Entity])
+readJSON path = fmap eitherDecode (B.readFile path) :: IO (Either String Document)

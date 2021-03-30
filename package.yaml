@@ -28,6 +28,7 @@ dependencies:
 - aeson
 - bytestring
 - regex-tdfa
+- utf8-string
 
 library:
   source-dirs: src

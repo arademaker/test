@@ -41,7 +41,7 @@ customProperties = defaultOptions {fieldLabelModifier = aux} where
 
 instance FromJSON Properties where
   parseJSON = genericParseJSON customProperties
-
+  
 instance ToJSON Properties where
   toJSON = genericToJSON customProperties
   toEncoding = genericToEncoding customProperties
