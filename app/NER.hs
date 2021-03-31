@@ -10,7 +10,7 @@ import System.Exit
 import System.Environment
 import Data.Either
 import Data.Maybe
-import Data.List ( groupBy, intercalate, sortOn )
+import Data.List ( groupBy, intercalate, sortOn, nub)
 import Data.Ord (comparing)
 import GHC.Generics
 import Data.Char ( toLower )
@@ -124,25 +124,31 @@ createCSV [fnNLU, fnWKS] = do
 -- possivel ideia de geracao HTML
 -- https://mmhaskell.com/blog/2020/3/9/blaze-lightweight-html-generation
 
+data Document =
+  Document
+    { header  :: [String]
+    , table :: [[Int]]
+    , content  :: [[AnnC]]
+    } deriving (Show, Generic)
+    
+instance FromJSON Document
+instance ToJSON Document where
+  toEncoding = genericToEncoding defaultOptions
 
-data MentionC =
-  MentionC
+data AnnC =
+  AnnC
     { mention :: String
     , context :: String
-    , span    :: (Int, Int)
+    , range    :: (Int, Int)
     , doc     :: String
-    , compare :: (String, String)
+    , comp :: (String, String)
     }
   deriving (Show, Generic)
 
--- create json
-{-
-func :: [String] -> [N.Document]
-func (x:xs) = rights (aux (x:xs))
- where aux (x:xs) = 
-    nlu <- N.readJSON x
-    nlu : aux xs
--}
+instance FromJSON AnnC
+instance ToJSON AnnC where
+  toEncoding = genericToEncoding defaultOptions
+
 
 --  m a -> m b -> (a -> b -> c) -> m c
 test = do
@@ -152,24 +158,25 @@ test = do
       
 
 createDoc :: [N.Document] -> [W.Document] -> FilePath -> IO()
-createDoc nlus wkss path = encodeFile path $ createTable $ sortTypeSent (createTS nlus wkss)
+createDoc nlus wkss path = encodeFile path $ func $ sortTypeSent (createTS nlus wkss)
  where
   createTS (x:xs) (y:ys) = getSentens x y ++ createTS xs ys
   createTS _ _ = []
 
 
 
-getSentens :: N.Document -> W.Document-> [TypeSent]
+getSentens :: N.Document -> W.Document-> [AnnC]
 getSentens nlu wks = map (createType fileName text) $ fromRight [] (validation nlu wks)
  where [text,fileName] = getText wks
    
-createType :: String -> String -> Annotation -> TypeSent
+createType :: String -> String -> Annotation -> AnnC
 createType name text ann =
-  TypeSent {
+  AnnC {
             doc = name
-          , word = subStr (anBegin ann) (anEnd ann) text
-          , sentence = subStr (anBegin ann - 10) (anEnd ann + 10 ) text
-          , typeType = map toLower $ intercalate "_" $ anType ann
+          , mention = subStr (anBegin ann) (anEnd ann) text
+          , context = subStr (anBegin ann - 10) (anEnd ann + 10 ) text
+          , comp = (head (anType ann), last (anType ann))
+          , range = (anBegin ann, anEnd ann)
           } 
 
 subStr :: Int -> Int -> String -> String
@@ -178,20 +185,32 @@ subStr a b text = take (b - a) (drop a text)
 getText :: W.Document -> [String]
 getText doc = [W.docText doc, W.name doc]
 
+func :: [[AnnC]] -> Document
+func annc = createTable tipos (addNullList tipos annc)
+ where
+   tipos = getType annc 
 
 
-sortTypeSent :: [TypeSent] -> [[TypeSent]]
-sortTypeSent ts = groupBy (\tsa tsb -> typeType tsa == typeType tsb) $ sortOn typeType ts
+sortTypeSent :: [AnnC] -> [[AnnC]]
+sortTypeSent m = groupBy (\ma mb -> comp ma == comp mb) $ sortOn comp m
 
+getType :: [[AnnC]]->[String]
+getType m = nub $ map aux m
+ where 
+   aux (a:as) = fst (comp a)
 
-addNullList :: [String] -> [[TypeSent]] -> [[TypeSent]]
+addNullList :: [String] -> [[AnnC]] -> [[AnnC]]
 addNullList (a:as) (t:ts) 
-  | typeType (head t) == a = t : addNullList as ts
+  | fst (comp (head t)) == a = t : addNullList as ts
   | otherwise = [] : addNullList as (t:ts)
 addNullList (a:as) [] = [] : addNullList as []
 addNullList [] (t:ts) =  t:ts
 addNullList [] [] = []
 
+createTable :: [String] -> [[AnnC]] -> Document
+createTable types cont = Document {header = types, table = tab, content = cont}
+ where 
+   tab = map  (map length) (groupBy (\conta contb -> fst (comp (head conta)) == fst (comp (head contb))) cont)
 
 -- main
 
