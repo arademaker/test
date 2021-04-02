@@ -203,7 +203,7 @@ addNullList :: [String] -> [[AnnC]] -> [[AnnC]]
 addNullList (a:as) (t:ts) 
   | fst (comp (head t)) == a = t : addNullList as ts
   | otherwise = [] : addNullList as (t:ts)
-addNullList (a:as) [] = [] : addNullList as []
+addNullList (a:as) [] = [] : addNullList as [] <- 
 addNullList [] (t:ts) =  t:ts
 addNullList [] [] = []
 
@@ -215,6 +215,15 @@ tableInt [] n l
 tableInt (x:xs) n l
   | length (last l) == n                  = tableInt xs n $ l ++ [[length x]]
   | otherwise                             = tableInt xs n $ (init l) ++ [last l ++ [length x]]
+
+removeDiag :: [[AnnC]] -> Int -> [[AnnC]] -> [[AnnC]]
+removeDiag [] _ l = l
+removeDiag (x:xs) n l
+ | length (last l) == n && (fst . comp (head x) == snd . comp (head x)) = removeDiag xs n $ l ++ [[]]
+ | length (last l) == n = removeDiag xs n $ l ++ [x]
+--  | (fst . comp (head x)) == (snd . comp (head x)) = removeDiag xs n $ (init l) ++ [last l ++ []]
+--  | otherwise = removeDiag xs n $ (init l) ++ [last l ++ x]
+ | otherwise = 
 
 createTable :: [String] -> [[AnnC]] -> Document
 createTable types cont = Document {header = types, table = (tableInt cont (length types) [[]]), content = cont}
