@@ -153,7 +153,7 @@ test = do
 
 -- Receive a list of NLU document, a list of WKS document, a file and return a json file
 createDoc :: [N.Document] -> [W.Document] -> FilePath -> IO()
-createDoc nlus wkss path = encodeFile path $ meDeUmNome $ sortTypeSent (createTS nlus wkss)
+createDoc nlus wkss path = encodeFile path $ constructorDoc $ sortTypeSent (createTS nlus wkss)
  where
   createTS (x:xs) (y:ys) = getSentens x y ++ createTS xs ys
   createTS _ _ = []
@@ -180,8 +180,8 @@ subStr a b text = take (b - a) (drop a text)
 getText :: W.Document -> [String]
 getText doc = [W.docText doc, W.name doc]
 
-meDeUmNome :: [[AnnC]] -> Document
-meDeUmNome annc = createTable tipos (addNullList (combi tipos) annc)
+constructorDoc :: [[AnnC]] -> Document
+constructorDoc annc = createTable tipos (addNullList (combi tipos) annc)
  where
    tipos = getType annc 
 
