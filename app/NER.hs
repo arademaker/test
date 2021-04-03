@@ -10,11 +10,11 @@ import System.Exit
 import System.Environment
 import Data.Either
 import Data.Maybe
-import Data.List ( groupBy, intercalate, sortOn, nub)
+import Data.List 
 import Data.Ord (comparing)
 import GHC.Generics
 import Data.Char ( toLower )
-import Data.Text ( unpack, pack)
+import Data.Text ( unpack, pack )
 import Control.Applicative
 
 data Annotation =
@@ -118,12 +118,6 @@ createCSV [fnNLU, fnWKS] = do
    aux (Left as) = putStrLn as
 -}
 
--- se continuar producao json
--- https://hackage.haskell.org/package/aeson-1.5.6.0/docs/Data-Aeson.html
-
--- possivel ideia de geracao HTML
--- https://mmhaskell.com/blog/2020/3/9/blaze-lightweight-html-generation
-
 data Document =
   Document
     { header  :: [String]
@@ -157,6 +151,7 @@ test = do
   return (liftA2 getSentens b a)
       
 
+-- Receive a list of NLU document, a list of WKS document, a file and return a json file
 createDoc :: [N.Document] -> [W.Document] -> FilePath -> IO()
 createDoc nlus wkss path = encodeFile path $ meDeUmNome $ sortTypeSent (createTS nlus wkss)
  where
@@ -174,7 +169,7 @@ createType name text ann =
   AnnC {
             doc = name
           , mention = subStr (anBegin ann) (anEnd ann) text
-          , context = subStr (anBegin ann - 15) (anEnd ann + 15) text
+          , context = subStr (anBegin ann - 25) (anEnd ann + 25) text
           , comp = (head (anType ann), last (anType ann))
           , range = (anBegin ann, anEnd ann)
           } 
@@ -186,7 +181,7 @@ getText :: W.Document -> [String]
 getText doc = [W.docText doc, W.name doc]
 
 meDeUmNome :: [[AnnC]] -> Document
-meDeUmNome annc = createTable tipos (addNullList tipos annc)
+meDeUmNome annc = createTable tipos (addNullList (combi tipos) annc)
  where
    tipos = getType annc 
 
@@ -199,34 +194,32 @@ getType m = nub $ map aux m
  where 
    aux (a:as) = fst (comp a)
 
-addNullList :: [String] -> [[AnnC]] -> [[AnnC]]
-addNullList (a:as) (t:ts) 
-  | fst (comp (head t)) == a = t : addNullList as ts
-  | otherwise = [] : addNullList as (t:ts)
-addNullList (a:as) [] = [] : addNullList as [] <- 
-addNullList [] (t:ts) =  t:ts
-addNullList [] [] = []
+combi :: [String] -> [[String]]
+combi s = sort [ [x,y] | x<-s, y<-s ]
+
+addNullList :: [[String]] -> [[AnnC]] -> [[AnnC]]
+addNullList (s:xs) (a:xa)
+ | fst (comp (head a)) == s !! 0 && snd (comp (head a)) == s !! 1 = a : addNullList xs xa
+ | otherwise = [] : addNullList xs (a:xa)
+addNullList (s:xs) [] = [] : addNullList xs []
+addNullList s [] = []
+addNullList [] _ = []
 
 tableInt :: [[AnnC]] -> Int -> [[Int]] -> [[Int]]
-tableInt [] n l
-  | length l == n && length (last l) == n = l
-  | length (last l) == n                  = tableInt [] n $ l ++ [[0]]
-  | otherwise                             = tableInt [] n $ (init l) ++ [last l ++ [0]]
-tableInt (x:xs) n l
-  | length (last l) == n                  = tableInt xs n $ l ++ [[length x]]
-  | otherwise                             = tableInt xs n $ (init l) ++ [last l ++ [length x]]
+tableInt (a:as) n l
+ | length (last l) == n = tableInt as n (l ++ [[length a]])
+ | otherwise = tableInt as n $ (init l) ++ [last l ++ [length a]]
+tableInt [] _ l = l
 
-removeDiag :: [[AnnC]] -> Int -> [[AnnC]] -> [[AnnC]]
-removeDiag [] _ l = l
-removeDiag (x:xs) n l
- | length (last l) == n && (fst . comp (head x) == snd . comp (head x)) = removeDiag xs n $ l ++ [[]]
- | length (last l) == n = removeDiag xs n $ l ++ [x]
---  | (fst . comp (head x)) == (snd . comp (head x)) = removeDiag xs n $ (init l) ++ [last l ++ []]
---  | otherwise = removeDiag xs n $ (init l) ++ [last l ++ x]
- | otherwise = 
+removeDiag :: [[AnnC]] -> [[AnnC]] -> [[AnnC]]
+removeDiag (a:as) l
+ | null a  = removeDiag as (l ++ [[]])
+ | fst (comp (head a)) == snd (comp (head a)) = removeDiag as (l ++ [[]])
+ | otherwise = removeDiag as (l ++ [a])
+removeDiag [] l = l
 
 createTable :: [String] -> [[AnnC]] -> Document
-createTable types cont = Document {header = types, table = (tableInt cont (length types) [[]]), content = cont}
+createTable types cont = Document {header = types, table = (tableInt cont (length types) [[]]), content = (removeDiag cont [])}
 
 -- main
 
