@@ -35,7 +35,7 @@ rangeTOtoken ls er = fst $ foldl aux ([],False) ls
 
 -- Transform Entity to CleanMention using its Sent
 entClean :: Entity -> Sent -> Maybe CleanMention
-entClean e s = if length nodes < 2 then Nothing else
+entClean e s = if null nodes then Nothing else
                Just $ CleanMention (etext e) (location $ head $ mentions e) t_range
   where
     w = _words s
