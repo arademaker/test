@@ -34,8 +34,9 @@ rangeTOtoken ls er = fst $ foldl aux ([],False) ls
                      | b = (i:l,b)
 
 -- Transform Entity to CleanMention using its Sent
-entClean :: Entity -> Sent -> CleanMention
-entClean e s = CleanMention (etext e) (location $ head $ mentions e) t_range
+entClean :: Entity -> Sent -> Maybe CleanMention
+entClean e s = if null nodes then Nothing else
+               Just $ CleanMention (etext e) (location $ head $ mentions e) t_range
   where
     w = _words s
     nodes = rangeTOtoken (zip (map _id w) (map cwRange w)) (entRange e)
@@ -43,7 +44,7 @@ entClean e s = CleanMention (etext e) (location $ head $ mentions e) t_range
 
 -- Update sent metadata with list of CleanEntity
 metaUpdate :: Sent -> [Entity] -> Sent
-metaUpdate s e = Sent (_meta s ++ [("entities",cMenTOstr $ map (`entClean` s) e)]) (_words s)
+metaUpdate s e = Sent (_meta s ++[("mentions", cMenTOstr $ mapMaybe (`entClean` s) e)]) (_words s)
 
 -- Filter CleanEntity list with the ones that belong to the Sent given
 entFilter :: [Entity] -> Sent -> [Entity]
