@@ -136,6 +136,7 @@ data AnnC =
     , range    :: (Int, Int)
     , doc     :: String
     , comp :: (String, String)
+    , rangeInSent :: [Int]
     }
   deriving (Show, Generic)
 
@@ -161,24 +162,34 @@ createDoc nlus wkss path = encodeFile path $ constructorDoc $ sortTypeSent (crea
 
 
 getSentens :: N.Document -> W.Document-> [AnnC]
-getSentens nlu wks = map (createType fileName text) $ fromRight [] (validation nlu wks)
- where [text,fileName] = getText wks
-   
-createType :: String -> String -> Annotation -> AnnC
-createType name text ann =
-  AnnC {
-            doc = name
-          , mention = subStr (anBegin ann) (anEnd ann) text
-          , context = subStr (anBegin ann - 25) (anEnd ann + 25) text
-          , comp = (head (anType ann), last (anType ann))
-          , range = (anBegin ann, anEnd ann)
-          } 
+getSentens nlu wks = map (createType (head fileName) (head text) sentences) $ fromRight [] (validation nlu wks)
+ where [text, fileName, sentences] = getText wks
+
+returnSentence :: [String] -> Int -> Int -> Int -> (String, (Int, Int))
+returnSentence [] _ _ _ = ("Error - sentences list null", (0, 0))   -- Not the best place for a mistake
+returnSentence sents begin end cont
+  | end > cont + length (head sents) = returnSentence (tail sents) begin end (cont + 1 + (length (head sents)))
+  | begin >= cont = ((head sents), (begin - cont, end - cont))
+  | otherwise = ("Error - Marking in 2 or more sentences", (0, 0))   -- Not the best place for a mistake
+
+createType :: String -> String -> [String] -> Annotation -> AnnC
+createType name text sentences ann =
+  let sentAndRang = returnSentence sentences (anBegin ann) (anEnd ann) (0)
+  in
+    AnnC {
+              doc = name
+            , mention = subStr (anBegin ann) (anEnd ann) text
+            , context = (fst sentAndRang)
+            , comp = (head (anType ann), last (anType ann))
+            , range = (anBegin ann, anEnd ann)
+            , rangeInSent = [fst (snd sentAndRang), snd (snd sentAndRang)]
+            } 
 
 subStr :: Int -> Int -> String -> String
 subStr a b text = take (b - a) (drop a text)
 
-getText :: W.Document -> [String]
-getText doc = [W.docText doc, W.name doc]
+getText :: W.Document -> [[String]]
+getText docW = [[W.docText docW], [W.name docW], map W.senText (W.sentences docW)]
 
 constructorDoc :: [[AnnC]] -> Document
 constructorDoc annc = createTable tipos (addNullList (combi tipos) annc)
