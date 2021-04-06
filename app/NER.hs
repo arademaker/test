@@ -160,11 +160,13 @@ createDoc nlus wkss path = encodeFile path $ constructorDoc $ sortTypeSent (crea
   createTS _ _ = []
 
 
-
+-- Apply validation in 2 Documents and return a AnnC
 getSentens :: N.Document -> W.Document-> [AnnC]
 getSentens nlu wks = map (createType (head fileName) (head text) sentences) $ fromRight [] (validation nlu wks)
  where [text, fileName, sentences] = getText wks
 
+-- Receive sentences and range of marking, return sentence that is 
+-- the mark and the range of the mark within the sentence
 returnSentence :: [String] -> Int -> Int -> Int -> (String, (Int, Int))
 returnSentence [] _ _ _ = ("Error - sentences list null", (0, 0))   -- Not the best place for a mistake
 returnSentence sents begin end cont
@@ -172,6 +174,7 @@ returnSentence sents begin end cont
   | begin >= cont = ((head sents), (begin - cont, end - cont))
   | otherwise = ("Error - Marking in 2 or more sentences", (0, 0))   -- Not the best place for a mistake
 
+-- Create AnnC, type for html
 createType :: String -> String -> [String] -> Annotation -> AnnC
 createType name text sentences ann =
   let sentAndRang = returnSentence sentences (anBegin ann) (anEnd ann) (0)
@@ -188,26 +191,31 @@ createType name text sentences ann =
 subStr :: Int -> Int -> String -> String
 subStr a b text = take (b - a) (drop a text)
 
+-- Get text, file name and sentences 
 getText :: W.Document -> [[String]]
 getText docW = [[W.docText docW], [W.name docW], map W.senText (W.sentences docW)]
 
+-- apply the builders
 constructorDoc :: [[AnnC]] -> Document
 constructorDoc annc = createTable tipos (addNullList (combi tipos) annc)
  where
    tipos = getType annc 
 
-
+-- Groups the same cell phone markings 
 sortTypeSent :: [AnnC] -> [[AnnC]]
 sortTypeSent m = groupBy (\ma mb -> comp ma == comp mb) $ sortOn comp m
 
-getType :: [[AnnC]]->[String]
+-- takes the types of annotations 
+getType :: [[AnnC]] -> [String]
 getType m = nub $ map aux m
  where 
    aux (a:as) = fst (comp a)
 
+-- All possible cells (making a combination) 
 combi :: [String] -> [[String]]
 combi s = sort [ [x,y] | x<-s, y<-s ]
 
+-- Adds empty cells 
 addNullList :: [[String]] -> [[AnnC]] -> [[AnnC]]
 addNullList (s:xs) (a:xa)
  | fst (comp (head a)) == s !! 0 && snd (comp (head a)) == s !! 1 = a : addNullList xs xa
@@ -216,12 +224,14 @@ addNullList (s:xs) [] = [] : addNullList xs []
 addNullList s [] = []
 addNullList [] _ = []
 
+-- Create table integers
 tableInt :: [[AnnC]] -> Int -> [[Int]] -> [[Int]]
 tableInt (a:as) n l
  | length (last l) == n = tableInt as n (l ++ [[length a]])
  | otherwise = tableInt as n $ (init l) ++ [last l ++ [length a]]
 tableInt [] _ l = l
 
+-- Removes diagonal markings 
 removeDiag :: [[AnnC]] -> [[AnnC]] -> [[AnnC]]
 removeDiag (a:as) l
  | null a  = removeDiag as (l ++ [[]])
@@ -229,8 +239,11 @@ removeDiag (a:as) l
  | otherwise = removeDiag as (l ++ [a])
 removeDiag [] l = l
 
+-- Groups the data to create the document 
 createTable :: [String] -> [[AnnC]] -> Document
-createTable types cont = Document {header = types, table = (tableInt cont (length types) [[]]), content = (removeDiag cont [])}
+createTable types cont = Document { header = types
+                                  , table = (tableInt cont (length types) [[]])
+                                  , content = (removeDiag cont [])}
 
 -- main
 
