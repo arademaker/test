@@ -56,14 +56,14 @@ executables:
     dependencies:
     - test
 
-  test-validation:
-    main:                NEValidation.hs
+  test-ner:
+    main:                NER.hs
     source-dirs:         app
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    - -main-is NEValidation
+    - -main-is NER
     dependencies:
     - test
   
