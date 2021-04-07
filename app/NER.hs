@@ -252,9 +252,51 @@ msg = " Usage: \n\
 
 usage = putStrLn msg
 
+{-
+
+  test-ner preciso passar:
+
+   1. 'path' para o arquivo json documents.json. E sabemos que o
+      subdiretorio gt fica sempre na mesma pasta deste arquivo.
+
+      diretorio onde estao os ground thurh sempre serão 'path'+/gt/
+
+   2. diterio onde estão os NLU
+
+   3. diretorio onde gravar o JSON
+
+  test-ner -t PATH/documents.json NLU/ REPORT/
+
+  quando ler
+
+  "id" : "0ac12d40-8fef-11eb-b950-7f8fbffa1a11-0",
+  "name" : "161.txt", ...
+
+  o sistema deverá saber que
+  '0ac12d40-8fef-11eb-b950-7f8fbffa1a11-0.json' está na subpasta gt da
+  mesma pasta onde o documents.json foi lido.
+
+  E o arquivo 161.txt está no NLU/161.json
+
+  E o json saida para o relatório deve ser salvo em REPORT/test.json
+
+https://hackage.haskell.org/package/filepath-1.4.2.1/docs/System-FilePath-Posix.html#t:FilePath
+
+λ> System.FilePath.takeDirectory "~/work/cpdoc/dhbb-nlp/ner/wks/documents.json"
+"~/work/cpdoc/dhbb-nlp/ner/wks"
+λ> System.FilePath.replaceExtensions "~/work/cpdoc/dhbb-nlp/ner/wks/documents.txt" "json"
+"~/work/cpdoc/dhbb-nlp/ner/wks/documents.json"
+λ> System.FilePath.takeDirectory "~/work/cpdoc/dhbb-nlp/ner/wks/documents.json"
+"~/work/cpdoc/dhbb-nlp/ner/wks"
+λ> System.FilePath.combine "~/work/cpdoc/dhbb-nlp/ner/wks" "gt"
+"~/work/cpdoc/dhbb-nlp/ner/wks/gt"
+λ> System.FilePath.combine (System.FilePath.combine "~/work/cpdoc/dhbb-nlp/ner/wks" "gt") "123123123-13213231.json"
+"~/work/cpdoc/dhbb-nlp/ner/wks/gt/123123123-13213231.json"
+
+-}
+
 parse ["-h"]    = usage >> exitSuccess
---parse ("-c":ls) = createCSV ls >> exitSuccess
---parse ("-t":ns:ws:f) = createDoc ns ws (head f) >> exitSuccess
+-- parse ("-t":jsonFile:inDir:outDir) = createDoc jsonFile inDir outDir >> exitSuccess
 parse _         = usage >> exitFailure
 
 -- slice :: Int -> Int -> String -> String

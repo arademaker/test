@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Main2 where
+module Punkt where
 
 import Data.Text (Text, pack)
 import qualified Data.Text.IO as Txt
