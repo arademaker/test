@@ -29,9 +29,13 @@ sRanges doc = tail $ foldl (\l sent -> l ++ [(cur_char l, cur_char l + length se
     s = map (snd . last . _meta) doc
     cur_char l = snd (last l) + 1
 
-putLen :: CW AW -> Int -> CW AW
-putLen (CW i f l u x fe r d m) b | isJust m = CW i f l u x fe r d ((<$>) (++"|TokenRange="++show b++":"++show (b+length (fromJust f))) m)
-                                 | otherwise = CW i f l u x fe r d (Just $ "TokenRange="++show b++":"++show (b+length (fromJust f)))
+putLen :: CW AW -> Maybe Int -> CW AW
+putLen c Nothing = c
+putLen (CW id form lemma upos xpos feats rel deps misc) (Just x)
+  | isNothing misc = CW id form lemma upos xpos feats rel deps
+                        (Just $ "TokenRange="++show x++":"++show (x+length (fromJust form)))
+  | otherwise = CW id form lemma upos xpos feats rel deps
+                   ((<$>) (++"|TokenRange="++show x++":"++show (x+length (fromJust form))) misc)
 
 subStrPos :: String -> String -> Maybe Int
 subStrPos sub str = (($ tails str) . findIndex . isPrefixOf) sub
@@ -40,10 +44,7 @@ addRange :: Sent -> Range -> Sent
 addRange (Sent m w) (x,_) = Sent m nw
   where
     sent = snd $ last m
-    (nw,_) = foldl (\(l,val) c -> if  fromJust (_form c) `isInfixOf` sent
-                             then (l++[putLen c val],val+length (fromJust (_form c))+1)
-                             else (l++[c],val))
-                                  ([],x-1) w
+    nw = map (\c -> putLen c (subStrPos (fromJust $ _form c) sent)) w
 
 
 -- Take conllu and add tokenranges
