@@ -1,18 +1,65 @@
 module ConlluProcess where
 
 
-import Data.Maybe ( catMaybes, isNothing, mapMaybe )
-import Data.Either ( lefts, rights )
-import Control.Applicative ( Applicative(liftA2) )
-import System.Environment ( getArgs ) 
-import System.Exit ( exitFailure, exitSuccess )
-import Conllu.IO ( readConlluFile, writeConlluFile )
+import Data.Maybe 
+import Data.Either 
+import Control.Applicative
+import System.Environment 
+import System.Exit 
+import Data.List
+import Conllu.IO
+import Text.Regex.TDFA
+import System.FilePath
 import Conllu.Type
 import NLU
 import JsonConlluTools
 
 
 -- File Merge Section
+
+
+
+
+
+
+-- Sent Ranges list of Conllu Document
+sRanges :: Doc -> [Range]
+sRanges doc = tail $ foldl (\l sent -> l ++ [(cur_char l, cur_char l + length sent)]) [(-1,-1)] s
+  where
+    s = map (snd . last . _meta) doc
+    cur_char l = snd (last l) + 1
+
+putLen :: CW AW -> Int -> CW AW
+putLen (CW i f l u x fe r d m) b | isJust m = CW i f l u x fe r d ((<$>) (++"|TokenRange="++show b++":"++show (b+length (fromJust f))) m)
+                                 | otherwise = CW i f l u x fe r d (Just $ "TokenRange="++show b++":"++show (b+length (fromJust f)))
+
+subStrPos :: String -> String -> Maybe Int
+subStrPos sub str = (($ tails str) . findIndex . isPrefixOf) sub
+
+addRange :: Sent -> Range -> Sent
+addRange (Sent m w) (x,_) = Sent m nw
+  where
+    sent = snd $ last m
+    (nw,_) = foldl (\(l,val) c -> if  fromJust (_form c) `isInfixOf` sent
+                             then (l++[putLen c val],val+length (fromJust (_form c))+1)
+                             else (l++[c],val))
+                                  ([],x-1) w
+
+
+-- Take conllu and add tokenranges
+putRanges :: Doc -> Doc
+putRanges doc = map (\(s,r) -> addRange s r) (zip doc (sRanges doc))
+
+
+
+
+
+
+
+
+
+
+
 
 
 -- Verify if CleanEntity belongs to Sent
