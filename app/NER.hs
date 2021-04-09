@@ -5,7 +5,9 @@ module NER where
 
 import qualified WKS as W
 import qualified NLU as N
+import qualified Data.ByteString.Lazy as B (readFile)
 import Data.Aeson
+import System.FilePath.Posix
 import System.Exit
 import System.Environment
 import Data.Either
@@ -85,7 +87,6 @@ merge x'@(x:xs) y'@(y:ys)
 -- Nothing means that either the inputs are Left (error in the parser)
 -- or the texts are different. Note that the return can also be Just
 -- [], meaning that no annotation were available.
-
 validation :: N.Document -> W.Document -> Either String [Annotation]
 validation docNLU docWKS =
   if checkTexts docWKS docNLU
@@ -97,7 +98,6 @@ validation docNLU docWKS =
 --validation (Left doc) _ = Left doc
 --validation _ (Left doc) = Left doc
 
--- bug: fix me!!
 addNullSpace :: Annotation -> Annotation
 addNullSpace ann =
   if anSource ann == ["WKS"]
@@ -118,6 +118,7 @@ createCSV [fnNLU, fnWKS] = do
    aux (Left as) = putStrLn as
 -}
 
+-- json for table structure 
 data Document =
   Document
     { header  :: [String]
@@ -145,12 +146,58 @@ instance ToJSON AnnC where
   toEncoding = genericToEncoding defaultOptions
 
 
---  m a -> m b -> (a -> b -> c) -> m c
-test = do
-  a <- W.readJSON "/Users/ar/work/cpdoc/dhbb-nlp/ner/wks/gt/72ba3590-8cd9-11eb-9b31-bf56d6e1e183-1.json"
-  b <- N.readJSON "/Users/ar/work/cpdoc/dhbb-nlp/ner/220.json"
-  return (liftA2 getSentens b a)
-      
+-- json reader with names of NLU and WKS jsons
+data Documents = 
+  Documents { docId :: FilePath
+            , name :: FilePath
+            , createdDate :: Int
+            , text :: String
+            , status :: String
+            , modifiedDate :: Double
+            } deriving (Show, Generic)
+
+customDocuments :: Options
+customDocuments = defaultOptions {fieldLabelModifier = aux}
+  where
+    aux x | x == "docId" = "id"
+          | otherwise = x
+
+instance FromJSON Documents
+  where 
+    parseJSON = genericParseJSON customDocuments
+
+instance ToJSON Documents 
+  where
+    toJSON = genericToJSON customDocuments
+    toEncoding = genericToEncoding customDocuments
+
+
+readJSON :: FilePath -> IO (Either String [Documents])
+readJSON path = fmap eitherDecode (B.readFile path) :: IO (Either String [Documents])
+
+
+-- Receive filepaths of NLU and return NLU.Document
+pathToDocNLU :: [FilePath] -> IO [N.Document]
+pathToDocNLU = mapM $ fmap (\(Right x) -> x) . N.readJSON
+
+-- Receive filepaths of WKS and return WKS.Document
+pathToDocWKS :: [FilePath] -> IO [W.Document]
+pathToDocWKS = mapM $ fmap (\(Right x) -> x) . W.readJSON
+
+-- Receive json with names of the NLU and WKS jsons, location of the NLU jsons, 
+-- output json writing site and return json with the compression matrix.
+createJson :: FilePath -> FilePath -> FilePath -> IO()
+createJson jsonFile inDir outDir = do
+  jsonDoc <- readJSON jsonFile
+  nlu <- pathToDocNLU $ map (\x -> replaceDirectory x inDir) 
+                            (map (\x -> replaceExtension x "json") 
+                                 (map name 
+                                      (head (rights [jsonDoc]))))
+  wks <- pathToDocWKS $ map (\x -> replaceDirectory x (combine (takeDirectory jsonFile) "gt")) 
+                            (map (\x -> replaceExtension x ".json") 
+                                 (map docId
+                                      (head (rights [jsonDoc]))))
+  createDoc nlu wks outDir
 
 -- Receive a list of NLU document, a list of WKS document, a file and return a json file
 createDoc :: [N.Document] -> [W.Document] -> FilePath -> IO()
@@ -247,60 +294,17 @@ createTable types cont = Document { header = types
 
 -- main
 
-msg = " Usage: \n\
-      \  test-ner -c json-nlu json-wks  => csv file in the STDOUT \n "
+msg = " Usage:\n\n\
+\  test-ner -t JSON_FILE NLU_PATH OUT_JSON\n\
+\     JSON_FILE: json with names of the NLU and WKS jsons\n\
+\     NLU_PATH: location of the NLU jsons\n\
+\     OUT_JSON: output json writing site"
 
 usage = putStrLn msg
 
-{-
-
-  test-ner preciso passar:
-
-   1. 'path' para o arquivo json documents.json. E sabemos que o
-      subdiretorio gt fica sempre na mesma pasta deste arquivo.
-
-      diretorio onde estao os ground thurh sempre serão 'path'+/gt/
-
-   2. diterio onde estão os NLU
-
-   3. diretorio onde gravar o JSON
-
-  test-ner -t PATH/documents.json NLU/ REPORT/
-
-  quando ler
-
-  "id" : "0ac12d40-8fef-11eb-b950-7f8fbffa1a11-0",
-  "name" : "161.txt", ...
-
-  o sistema deverá saber que
-  '0ac12d40-8fef-11eb-b950-7f8fbffa1a11-0.json' está na subpasta gt da
-  mesma pasta onde o documents.json foi lido.
-
-  E o arquivo 161.txt está no NLU/161.json
-
-  E o json saida para o relatório deve ser salvo em REPORT/test.json
-
-https://hackage.haskell.org/package/filepath-1.4.2.1/docs/System-FilePath-Posix.html#t:FilePath
-
-λ> System.FilePath.takeDirectory "~/work/cpdoc/dhbb-nlp/ner/wks/documents.json"
-"~/work/cpdoc/dhbb-nlp/ner/wks"
-λ> System.FilePath.replaceExtensions "~/work/cpdoc/dhbb-nlp/ner/wks/documents.txt" "json"
-"~/work/cpdoc/dhbb-nlp/ner/wks/documents.json"
-λ> System.FilePath.takeDirectory "~/work/cpdoc/dhbb-nlp/ner/wks/documents.json"
-"~/work/cpdoc/dhbb-nlp/ner/wks"
-λ> System.FilePath.combine "~/work/cpdoc/dhbb-nlp/ner/wks" "gt"
-"~/work/cpdoc/dhbb-nlp/ner/wks/gt"
-λ> System.FilePath.combine (System.FilePath.combine "~/work/cpdoc/dhbb-nlp/ner/wks" "gt") "123123123-13213231.json"
-"~/work/cpdoc/dhbb-nlp/ner/wks/gt/123123123-13213231.json"
-
--}
-
 parse ["-h"]    = usage >> exitSuccess
--- parse ("-t":jsonFile:inDir:outDir) = createDoc jsonFile inDir outDir >> exitSuccess
+parse ("-t":jsonFile:inDir:outDir) = createJson jsonFile inDir (head outDir) >> exitSuccess
 parse _         = usage >> exitFailure
-
--- slice :: Int -> Int -> String -> String
--- slice a b = take (b - a) . drop a
 
 main :: IO ()
 main = do
