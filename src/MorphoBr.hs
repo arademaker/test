@@ -30,10 +30,10 @@ struc :: [(String,String)] -> [(B.ByteString,[String])]
 struc (x:xs) = getKey $ toBS (x:xs)
 struc _ = []
 
-getPars :: String -> [(String,String )] 
-getPars verbs = map (aux . words) (lines verbs)
+getPairs :: String -> [(String,String )] 
+getPairs verbs = map (aux . words) (lines verbs)
  where aux l = (head l, last l)
-getPars "" = []
+getPairs "" = []
 
 merge :: [(String,String )] -> [(String,String )] -> [(String,String )] 
 merge (x:xs) (y:ys) = if fst x < fst y
@@ -43,10 +43,12 @@ merge [] xs = xs
 merge xs [] = xs
 
 createList :: [String] -> [(String,String)]
-createList words = aux (map getPars words)
+createList words = aux (map getPairs words)
  where aux [adjs,advs,nouns,verbs] = merge (merge (merge adjs advs) nouns) verbs
 
 -- recebe uma lista de strings (dos documentos lidos) e
 -- retorna a arvore do tipo (palavra,[classifições])
 createTree :: [String] -> Trie [String]
 createTree = fromList . struc . createList 
+
+--para pesquisar na trie: lookup
