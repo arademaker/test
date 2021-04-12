@@ -33,7 +33,6 @@ struc _ = []
 getPairs :: String -> [(String,String )] 
 getPairs verbs = map (aux . words) (lines verbs)
  where aux l = (head l, last l)
-getPairs "" = []
 
 merge :: [(String,String )] -> [(String,String )] -> [(String,String )] 
 merge (x:xs) (y:ys) = if fst x < fst y
@@ -44,11 +43,17 @@ merge xs [] = xs
 
 createList :: [String] -> [(String,String)]
 createList words = aux (map getPairs words)
- where aux [adjs,advs,nouns,verbs] = merge (merge (merge adjs advs) nouns) verbs
+ where aux xs = foldl merge [] xs
 
--- recebe uma lista de strings (dos documentos lidos) e
--- retorna a arvore do tipo (palavra,[classifições])
+createTreeList :: [String] -> [(B.ByteString,[String])]
+createTreeList = struc . createList 
+
 createTree :: [String] -> Trie [String]
-createTree = fromList . struc . createList 
+createTree = fromList . createTreeList
 
+
+
+--fromList cria a arvores a partir de uma lista
 --para pesquisar na trie: lookup
+    
+-- <$> writeFile path (show createTree)
