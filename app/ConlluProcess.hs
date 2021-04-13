@@ -13,6 +13,7 @@ import System.FilePath
 import Conllu.Type
 import NLU
 import JsonConlluTools
+import Data.Char
 
 
 -- File Merge Section
@@ -37,14 +38,40 @@ putLen (CW id form lemma upos xpos feats rel deps misc) (Just x)
   | otherwise = CW id form lemma upos xpos feats rel deps
                    ((<$>) (++"|TokenRange="++show x++":"++show (x+length (fromJust form))) misc)
 
+
+aux :: String -> [CW AW] -> Int -> [CW AW]
+aux str (t:ts) begin | null (t:ts) = []
+                     | foldl (\b c -> and [b, (not $ or [isAlphaNum c, isPunctuation c])]) True str = (t:ts)
+                     | b = (putLen t pos):(aux (drop tam nstr) ts ((fromJust pos)+tam))
+                     | otherwise = t:aux str ts begin
+  where
+    form = (fromJust (_form t))
+    (b, nstr) = (isNextToken str t)
+    pos = ((<$>) (+begin) (subStrPos form str))
+    tam = length form
+
+
+isNextToken :: String -> CW AW -> (Bool, String)
+isNextToken str t | head str == ' ' = isNextToken (drop 1 str) t
+                  | otherwise = (and [isPrefixOf form str, not subword], str)
+  where
+    form = fromJust (_form t)
+    next = head $ drop (length form) str
+    subword = and $ map isAlphaNum [last form, next]
+
 subStrPos :: String -> String -> Maybe Int
 subStrPos sub str = (($ tails str) . findIndex . isPrefixOf) sub
 
+-- addRange :: Sent -> Range -> Sent
+-- addRange (Sent m w) (x,_) = Sent m nw
+--   where
+--     sent = snd $ last m
+--     nw = map (\c -> putLen c (subStrPos (fromJust $ _form c) sent)) w
+
 addRange :: Sent -> Range -> Sent
-addRange (Sent m w) (x,_) = Sent m nw
+addRange (Sent m w) (b,_) = Sent m (aux text w b)
   where
-    sent = snd $ last m
-    nw = map (\c -> putLen c (subStrPos (fromJust $ _form c) sent)) w
+    text = snd $ last m
 
 
 -- Take conllu and add tokenranges
