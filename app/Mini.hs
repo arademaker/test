@@ -8,6 +8,7 @@ import Data.List
 import Control.Applicative ( Applicative(liftA2) )
 import System.Environment ( getArgs ) 
 import System.Exit ( exitFailure, exitSuccess )
+import System.FilePath.Posix
 import Conllu.IO ( readConlluFile, writeConlluFile )
 import Conllu.Type
 import JsonConlluTools
@@ -20,6 +21,11 @@ import qualified Conllu.DeprelTagset as D
 -- colocar as classificaçoes no deps
 -- pegar a palavra no form
 -- comparar com feats 
+
+---- Merge section 
+
+-- Merge em apenas um arquivo -o
+
 search :: Maybe [String] -> String
 search ls  = if isNothing ls 
               then "not found"
@@ -55,6 +61,19 @@ merge [clpath,jspath,outpath] = do
   tl <- M.readJSON jspath
   writeConlluFile outpath $ addMorphoInfo (T.fromList $ M.getList tl) cl 
 
+-- merge em vários arquivos 
+
+createFilePath :: FilePath -> FilePath -> FilePath 
+createFilePath directory cl = addExtension (combine directory (takeBaseName cl)) "-n.conllu"
+
+merges :: [FilePath] -> IO [()]
+merges (x:y:xs) = do 
+  tl  <- M.readJSON y
+  mapM (aux x tl) xs
+ where aux directory tl clpath = do
+        cl <- readConlluFile clpath
+        writeConlluFile (createFilePath directory clpath) $ addMorphoInfo (T.fromList $ M.getList tl) cl
+
 
 -- main interface
 
@@ -65,6 +84,7 @@ help = putStrLn "Usage: \n\
 parse ["-h"]    = help >> exitSuccess
 parse ("-c":ls) = M.createTrieList ls >> exitSuccess
 parse ("-o":ls) = merge ls >> exitSuccess
+parse ("-m":ls) = merges ls >> exitSuccess
 parse ls        = help >> exitFailure
 
     
