@@ -25,7 +25,6 @@ search ls  = if isNothing ls
               then "not found"
               else intercalate "|"  $ fromJust ls
 
---maybe (return "") (intercalate "|") ls
 
 addClass :: T.Trie [String] -> CW AW -> CW AW
 addClass trie word = word{_deps = [Rel{_head = SID 1 
@@ -57,11 +56,11 @@ merge [clpath,jspath,outpath] = do
   writeConlluFile outpath $ addMorphoInfo (T.fromList $ M.getList tl) cl 
 
 
---mapM readFile
+-- main interface
 
 help = putStrLn "Usage: \n\
-                \ -c [classes de palavras, onde escrever] :: [filePath] \n\
-                \ -r path JSON "
+                \ test-mini -c [classes de palavras, onde escrever] :: [filePath] \n\
+                \ test-mini -o [conlluPath, jsonPath, outPath] \n"
 
 parse ["-h"]    = help >> exitSuccess
 parse ("-c":ls) = M.createTrieList ls >> exitSuccess
