@@ -41,13 +41,14 @@ putLen (CW id form lemma upos xpos feats rel deps misc) (Just x)
 
 aux :: String -> [CW AW] -> Int -> [CW AW]
 aux str (t:ts) begin | null (t:ts) = []
+                     | (t:ts) == (t:[]) = [putLen t pos]
                      | foldl (\b c -> and [b, (not $ or [isAlphaNum c, isPunctuation c])]) True str = (t:ts)
-                     | b = (putLen t pos):(aux (drop tam nstr) ts ((fromJust pos)+tam))
-                     | otherwise = t:aux str ts begin
+                     | b = (putLen t pos):(aux (drop tam nstr) ts ((fromJust pos) + tam))
+                     | otherwise = t:(aux str ts begin)
   where
     form = (fromJust (_form t))
     (b, nstr) = (isNextToken str t)
-    pos = ((<$>) (+begin) (subStrPos form str))
+    pos = ((<$>) (+ begin) (subStrPos form str))
     tam = length form
 
 
@@ -133,10 +134,11 @@ entFilter (x:xs) s
 addJson :: Either String Document -> Doc -> FilePath -> IO ()
 addJson (Left s) _ _ = putStrLn $ "JSON INVÁLIDO: \n" ++ s
 addJson (Right js) sents outpath 
-  | null $ mapMaybe sentRange sents = putStrLn "CONLLU INVÁLIDO: \n Ranges de sentenças não encontrados"
+  | null $ mapMaybe sentRange sents = writeConlluFile outpath outConll2
   | otherwise = writeConlluFile outpath outConll
   where
     outConll = map (\s -> metaUpdate s $ entFilter (entities js) s) sents
+    outConll2 = map (\s -> metaUpdate s $ entFilter (entities js) s) (putRanges sents)
 
 -- Recieves the filepaths, opens the files and calls addJson
 merge :: [FilePath] -> IO ()
