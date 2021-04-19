@@ -1,22 +1,81 @@
 module ConlluProcess where
 
 
-import Data.Maybe ( catMaybes, isNothing, mapMaybe )
-import Data.Either ( lefts, rights )
+import Data.Maybe ( mapMaybe, catMaybes, fromJust, isNothing )
+import Data.Either ( rights, lefts )
 import Control.Applicative ( Applicative(liftA2) )
-import System.Environment ( getArgs ) 
-import System.Exit ( exitFailure, exitSuccess )
+import System.Environment ( getArgs )
+import System.Exit ( exitSuccess, exitFailure )
+import Data.List ( isPrefixOf, findIndex, tails )
 import Conllu.IO ( readConlluFile, writeConlluFile )
+import Data.Char ( isAlphaNum, isPunctuation )
 import Conllu.Type
 import NLU
 import JsonConlluTools
+
+
+
+
+-- Token ranges identification section
+
+
+-- Sent Ranges list of Conllu Document
+sRanges :: Doc -> [Range]
+sRanges doc = tail $ foldl (\l sent -> l ++ [(curChar l, curChar l + length sent)]) [(-1,-1)] s
+  where
+    s = map (snd . last . _meta) doc
+    curChar l = snd (last l) + 1
+
+-- Write a range of a CW AW given it and maybe its initial position
+writeRange :: CW AW -> Maybe Int -> CW AW
+writeRange c Nothing = c
+writeRange (CW id form lemma upos xpos feats rel deps misc) (Just x)
+  | isNothing misc = CW id form lemma upos xpos feats rel deps
+                        (Just $ "TokenRange="++show x++":"++show (x+length (fromJust form)))
+  | otherwise = CW id form lemma upos xpos feats rel deps
+                   ((<$>) (++"|TokenRange="++show x++":"++show (x+length (fromJust form))) misc)
+
+-- Find and annotate the token ranges into the CW AW list with the original string and its begin
+findRanges :: String -> [CW AW] -> Int -> [CW AW]
+findRanges str (t:ts) begin | null (t:ts) = []
+                     | (t:ts) == [t] = [writeRange t pos]
+                     | foldl (\b c -> b && not (isAlphaNum c || isPunctuation c)) True str = t:ts
+                     | b = writeRange t pos:findRanges (drop tam nstr) ts (fromJust pos + tam)
+                     | otherwise = t:findRanges str ts begin
+  where
+    form = fromJust (_form t)
+    (b, nstr) = isNextToken str t
+    pos = (<$>) (+ begin) (subStrPos form str)
+    tam = length form
+
+-- Validation if token is next component of a string (necessary in cases that tokens are split by UDPipe)
+isNextToken :: String -> CW AW -> (Bool, String)
+isNextToken str t | head str == ' ' = isNextToken (drop 1 str) t
+                  | otherwise = ((form `isPrefixOf` str) && not subword, str)
+  where
+    form = fromJust (_form t)
+    next = str !! max 0 (length form)
+    subword = all isAlphaNum [last form, next]
+
+-- Find position of substring
+subStrPos :: String -> String -> Maybe Int
+subStrPos sub str = (($ tails str) . findIndex . isPrefixOf) sub
+
+-- Put ranges in sentences given its position in the text
+addRange :: Sent -> Range -> Sent
+addRange (Sent m w) (b,_) = Sent m (findRanges (snd $ last m) w b)
+
+-- Take conllu and add tokenranges
+putRanges :: Doc -> Doc
+putRanges doc = zipWith addRange doc (sRanges doc)
+
 
 
 -- File Merge Section
 
 
 -- Verify if CleanEntity belongs to Sent
-entINsent :: Entity -> Sent -> Maybe Bool 
+entINsent :: Entity -> Sent -> Maybe Bool
 entINsent e s = out where
   sRange = catMaybes [sentRange s]
   out = if null sRange then Nothing else Just $ isSubrange (entRange e) (head sRange)
@@ -27,10 +86,10 @@ rangeTOtoken ls er = fst $ foldl aux ([],False) ls
   where
     jr (Just t) = t
     aux (l,b) (i,mr) | not b && isNothing mr = (l,b)
-                     | not b && (fst (jr mr) == fst er) = (i:l,True)
+                     | not b && fst (jr mr) == fst er = (i:l,True)
                      | not b = (l,b)
                      | b && isNothing mr = (i:l,b)
-                     | b && (fst (jr mr) >= snd er) = (l,False)
+                     | b && fst (jr mr) >= snd er = (l,False)
                      | b = (i:l,b)
 
 -- Transform Entity to CleanMention using its Sent
@@ -57,11 +116,10 @@ entFilter (x:xs) s
 -- to print the error or create the out conllu file with the cleanentities in the metadata
 addJson :: Either String Document -> Doc -> FilePath -> IO ()
 addJson (Left s) _ _ = putStrLn $ "JSON INVÁLIDO: \n" ++ s
-addJson (Right js) sents outpath 
-  | null $ mapMaybe sentRange sents = putStrLn "CONLLU INVÁLIDO: \n Ranges de sentenças não encontrados"
-  | otherwise = writeConlluFile outpath outConll
+addJson (Right js) sents outpath = writeConlluFile outpath outCll
   where
-    outConll = map (\s -> metaUpdate s $ entFilter (entities js) s) sents
+    outCll = map (\s -> metaUpdate s $ entFilter (entities js) s)
+                 (if null (mapMaybe sentRange sents) then putRanges sents else sents)
 
 -- Recieves the filepaths, opens the files and calls addJson
 merge :: [FilePath] -> IO ()
@@ -145,6 +203,6 @@ parse ["-h"]    = help >> exitSuccess
 parse ("-m":ls) = merge ls >> exitSuccess
 parse ("-c":ls) = check ls >> exitSuccess
 parse ls        = help >> exitFailure
-    
+
 main :: IO ()
 main = getArgs >>= parse
