@@ -24,13 +24,10 @@ import qualified Conllu.DeprelTagset as D
 
 ---- Merge section 
 
--- Merge em apenas um arquivo -o
-
 search :: Maybe [String] -> String
 search ls  = if isNothing ls 
               then "not found"
               else intercalate "|"  $ fromJust ls
-
 
 addClass :: T.Trie [String] -> CW AW -> CW AW
 addClass trie word = word{_deps = [Rel{_head = SID 1 
@@ -55,19 +52,12 @@ addMorphoInfo trie = map aux
    aux :: Sent -> Sent
    aux sent =  sent { _words = map (featCheck trie) (_words sent)}
 
-merge :: [FilePath] -> IO()
-merge [clpath,jspath,outpath] = do 
-  cl <- readConlluFile clpath
-  tl <- M.readJSON jspath
-  writeConlluFile outpath $ addMorphoInfo (T.fromList $ M.getList tl) cl 
-
--- merge em vários arquivos 
-
 createFilePath :: FilePath -> FilePath -> FilePath 
 createFilePath directory cl = addExtension (combine directory (takeBaseName cl)) "-n.conllu"
 
-merges :: [FilePath] -> IO [()]
-merges (x:y:xs) = do 
+-- [outpath, jsonPath, conllu files ]
+merge :: [FilePath] -> IO [()]
+merge (x:y:xs) = do 
   tl  <- M.readJSON y
   mapM (aux x tl) xs
  where aux directory tl clpath = do
@@ -75,16 +65,68 @@ merges (x:y:xs) = do
         writeConlluFile (createFilePath directory clpath) $ addMorphoInfo (T.fromList $ M.getList tl) cl
 
 
+---- Check section
+
+
+ind :: Feat -> Sttring
+ind f = 
+
+cnd :: Feat ->  String
+cnd f = "+COND":
+
+sub :: Feat -> String
+sub f = "+SBJR":
+
+ad :: Feat -> String
+ad f = 
+
+get :: Feat -> String 
+get f
+  | isNothing f = ""
+  |(_feat f == "Mood") && (head _featValues f == "Ind") = ind f _featValues f
+  |(_feat f == "Mood") && (head _featValues f == "Cnd") = cnd f _featValues f
+  |(_feat f == "Mood") && (head _featValues f == "Sub") = sub $ _featValues f
+  | otherwise = ad f
+
+func2 :: String -> FEATS -> String
+func2 upos feats = head upos ++ "+" ++ aux feats
+ where 
+   aux (x:xs) = get x : aux xs 
+
+func :: CW AW -> String
+func word = func3 (func2 upos feat) mmorpho
+ where
+  upos =show $ _upos word
+  feat = _feat word
+  morpho = _subdep $ head $ _deps $ word
+
+checkCl :: Doc -> IO ()
+checkCl cl = map (map aux)
+ where aux word
+ | isNothing(_upos word) = ""
+ | _upos word == U.VERB  = func word
+ | _upos word == U.NOUN  = func word
+ | _upos word == U.ADJ   = func word
+ | _upos word == U.ADV   = func word
+ | otherwise             = ""
+
+check :: [FilePath] -> IO ()
+check = mapM aux 
+ where aux clpath = do 
+   cl <- readConlluFile clpath 
+   checkCl cl 
+
+
 -- main interface
 
 help = putStrLn "Usage: \n\
                 \ test-mini -c [classes de palavras, onde escrever] :: [filePath] \n\
-                \ test-mini -o [conlluPath, jsonPath, outPath] \n"
+                \ test-mini -m [outPath, jsonPath, conlluPaths] \n"
 
 parse ["-h"]    = help >> exitSuccess
 parse ("-c":ls) = M.createTrieList ls >> exitSuccess
-parse ("-o":ls) = merge ls >> exitSuccess
-parse ("-m":ls) = merges ls >> exitSuccess
+parse ("-m":ls) = merge ls >> exitSuccess
+
 parse ls        = help >> exitFailure
 
     
