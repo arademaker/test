@@ -24,16 +24,16 @@ import qualified Conllu.DeprelTagset as D
 
 ---- Merge section 
 
-search :: Maybe [String] -> String
-search ls  = if isNothing ls 
-              then "not found"
-              else intercalate "|"  $ fromJust ls
+search :: Maybe [String] -> [String]
+search ls = if isNothing ls 
+              then ["not found"]
+              else  map (map toLower) (fromJust ls)
 
 addClass :: T.Trie [String] -> CW AW -> CW AW
 addClass trie word = word{_deps = [Rel{_head = SID 1 
                                       ,_deprel = D.ACL
-                                      ,_subdep = Just (aux word)
-                                      ,_rest= Just [""]}]}
+                                      ,_subdep = Just $ head (aux word)
+                                      ,_rest = Just $ tail (aux word)}]}
  where 
   aux word = search $ T.lookup (M.packStr $ map toLower ( fromJust $_form word)) trie
 
@@ -53,79 +53,101 @@ addMorphoInfo trie = map aux
    aux sent =  sent { _words = map (featCheck trie) (_words sent)}
 
 createFilePath :: FilePath -> FilePath -> FilePath 
-createFilePath directory cl = addExtension (combine directory (takeBaseName cl)) "-n.conllu"
+createFilePath directory cl = addExtension (combine directory (takeBaseName cl)) "conllu"
 
 -- [outpath, jsonPath, conllu files ]
 merge :: [FilePath] -> IO [()]
 merge (x:y:xs) = do 
   tl  <- M.readJSON y
-  mapM (aux x tl) xs
+  mapM (aux x (T.fromList $ M.getList tl)) xs
  where aux directory tl clpath = do
         cl <- readConlluFile clpath
-        writeConlluFile (createFilePath directory clpath) $ addMorphoInfo (T.fromList $ M.getList tl) cl
+        writeConlluFile (createFilePath directory clpath) $ addMorphoInfo tl cl
 
 
 ---- Check section
 
 
-ind :: Feat -> Sttring
-ind f = 
+member :: String -> [String] -> Bool 
+member x [] = False
+member x (y:ys) | x==y = True
+                | otherwise = member x ys
 
-cnd :: Feat ->  String
-cnd f = "+COND":
+getFeatValues :: [Feat] -> String
+getFeatValues (x:xs) 
+  | _feat x == "Gender" = "+" ++ [toLower (head (head (_featValues x)))] ++ (getFeatValues xs)
+  | (_feat x == "Number") && (head ( _featValues x) == "Plur") = "+pl" ++ (getFeatValues xs)
+  | (_feat x == "Number") && (head (_featValues x) == "Sing") = "+sg" ++ (getFeatValues xs)
+  | _feat x == "Person" =  "+" ++ (head (_featValues x)) ++ (getFeatValues xs)
+  | (_feat x == "Tense") && (head (_featValues x) == "Fut") = "+fut" ++ (getFeatValues xs)
+  | (_feat x == "Tense") && (head (_featValues x) == "Past") = "+prf" ++ (getFeatValues xs)
+  | (_feat x == "Tense") && (head (_featValues x) == "Pres") = "+prs" ++ (getFeatValues xs)
+  | (_feat x == "Voice") && (head (_featValues x) == "Pass") = "+ptpass" ++ (getFeatValues xs)
+  | otherwise = getFeatValues xs
+getFeatValues [] = ""
 
-sub :: Feat -> String
-sub f = "+SBJR":
+getUpos :: String -> U.POS -> [Feat] -> String
+getUpos lemma c (x:xs)
+  | (c == U.VERB) && (head (_featValues x) == "Ind") = lemma ++ "+v" ++ (getFeatValues $ reverse xs)
+  | (c == U.VERB) && (head (_featValues x) == "Cnd") = lemma ++ "+v+cond" ++ (getFeatValues $ reverse $ tail xs)
+  | (c == U.VERB) && (head (_featValues x) == "Sub") = lemma ++ "+v+sbjr" ++ (getFeatValues $ reverse $ tail xs)
+  | (c == U.VERB) && (head (_featValues x) == "Ger") = lemma ++ "+v+grd"
+  | c == U.ADJ = lemma ++ "+a" ++ (getFeatValues (x:xs))
+  | c == U.NOUN = lemma ++ "+n" ++ (getFeatValues (x:xs))
+  | c == U.ADV = lemma ++ "+adv"
+  | otherwise = ""
 
-ad :: Feat -> String
-ad f = 
 
-get :: Feat -> String 
-get f
-  | isNothing f = ""
-  |(_feat f == "Mood") && (head _featValues f == "Ind") = ind f _featValues f
-  |(_feat f == "Mood") && (head _featValues f == "Cnd") = cnd f _featValues f
-  |(_feat f == "Mood") && (head _featValues f == "Sub") = sub $ _featValues f
-  | otherwise = ad f
+-- verifica se a classificação do conllu existe no MorphoBr e retorna um erro
+-- caso não exista
+-- forma flexionada -> classificação adaptada do conllu -> classificações do MorphoBr
+getError :: String -> String -> [String] -> String
+getError word cl m 
+  | member cl (sort m) = ""
+  | otherwise = " error on " ++ cl ++ " " ++ (head m) ++ " \n"
 
-func2 :: String -> FEATS -> String
-func2 upos feats = head upos ++ "+" ++ aux feats
- where 
-   aux (x:xs) = get x : aux xs 
-
-func :: CW AW -> String
-func word = func3 (func2 upos feat) mmorpho
+comp :: CW AW -> String
+comp word = getError w (getUpos lemma upos feat) morpho
  where
-  upos =show $ _upos word
-  feat = _feat word
-  morpho = _subdep $ head $ _deps $ word
+  w = fromJust $ _form word
+  lemma = fromJust $ _lemma word
+  upos = fromJust $ _upos word
+  feat = _feats word
+  morpho = fromJust $ _rest $ head $ _deps word
 
-checkCl :: Doc -> IO ()
-checkCl cl = map (map aux)
- where aux word
- | isNothing(_upos word) = ""
- | _upos word == U.VERB  = func word
- | _upos word == U.NOUN  = func word
- | _upos word == U.ADJ   = func word
- | _upos word == U.ADV   = func word
- | otherwise             = ""
 
-check :: [FilePath] -> IO ()
+-- se a palavra for um verbo, nome, adjetivo ou advérbio, chamamos a função 
+-- que verifica se a classificação existe 
+checkCl :: Sent -> String
+checkCl sent  = concatMap aux (_words sent)
+ where 
+   aux word
+    | isNothing(_upos word) = ""
+    | (fromJust $ _upos word) == U.VERB  = comp word
+    | (fromJust $ _upos word) == U.NOUN  = comp word
+    | (fromJust $ _upos word) == U.ADJ   = comp word
+    | (fromJust $ _upos word) == U.ADV   = comp word
+    | otherwise = ""
+
+check :: [FilePath] -> IO [()]
 check = mapM aux 
- where aux clpath = do 
-   cl <- readConlluFile clpath 
-   checkCl cl 
+ where 
+   aux clpath = do 
+    cl <- readConlluFile clpath 
+    print $ concatMap checkCl cl 
 
 
 -- main interface
 
 help = putStrLn "Usage: \n\
-                \ test-mini -c [classes de palavras, onde escrever] :: [filePath] \n\
-                \ test-mini -m [outPath, jsonPath, conlluPaths] \n"
+                \ test-mini -t [classes de palavras, onde escrever] :: [filePath] \n\
+                \ test-mini -m [outPath, jsonPath, conlluPaths]\n\
+                \ test-mini -c [conlluPAths]\n"
 
 parse ["-h"]    = help >> exitSuccess
-parse ("-c":ls) = M.createTrieList ls >> exitSuccess
+parse ("-t":ls) = M.createTrieList ls >> exitSuccess
 parse ("-m":ls) = merge ls >> exitSuccess
+parse ("-c":ls) = check ls >> exitSuccess
 
 parse ls        = help >> exitFailure
 
