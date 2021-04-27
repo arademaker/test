@@ -17,15 +17,15 @@ import JsonConlluTools
 
 -- Token ranges identification section
 
-auxSentRanges :: Int -> String -> [String] -> [Int]
+auxSentRanges :: Int -> String -> [String] -> [Range]
 auxSentRanges _ _ [] = []
-auxSentRanges n text (x:xs) = i:(auxSentRanges (n + i) text xs)
+auxSentRanges n text (x:xs) = (i, i + length x):(auxSentRanges (i + (length x) - 1) text xs)
   where
     i = n + (fromJust $ subStrPos x $ drop n text)
 
 -- List of intervals where the sentences are contained.
 sRanges :: Doc -> String -> [Range]
-sRanges doc text = map (\(a, b) -> (a, a + b)) $ zip (auxSentRanges 0 text s) $ map length s
+sRanges doc text = auxSentRanges 0 text s
   where
     s = map (snd . fromJust . ((find (\(first, _) -> first == "text ")) . _meta)) doc
 
@@ -41,10 +41,12 @@ writeRange (CW id form lemma upos xpos feats rel deps misc) (Just x)
 -- Find and annotate the token ranges into the CW AW list with the original string and its begin
 findRanges :: String -> [CW AW] -> Int -> [CW AW]
 findRanges str (t:ts) begin | null (t:ts) = []
-                     | (t:ts) == [t] = [writeRange t pos]
-                     | foldl (\b c -> b && not (isAlphaNum c || isPunctuation c)) True str = t:ts
-                     | b = writeRange t pos:findRanges (drop tam nstr) ts (fromJust pos + tam)
-                     | otherwise = t:findRanges str ts begin
+                                   | (t:ts) == [t] = [writeRange t pos]
+                                   | foldl (\b c -> b && not (isAlphaNum c || isPunctuation c)) 
+                                           True 
+                                           str = t:ts
+                                   | b = writeRange t pos:findRanges (drop tam nstr) ts (fromJust pos + tam)
+                                   | otherwise = t:findRanges str ts begin
   where
     form = fromJust (_form t)
     (b, nstr) = isNextToken str t
@@ -62,9 +64,15 @@ isNextToken str t | head str == ' ' = isNextToken (drop 1 str) t
 
 -- Take conllu and add tokenranges.
 putRanges :: Doc -> String -> Doc
-putRanges doc text = zipWith (\(Sent m w) (b,_) -> Sent m (findRanges (snd $ last m) w b)) 
-                        doc 
-                        (sRanges doc text)
+putRanges doc text = 
+  zipWith (\(Sent m w) (b,_) -> Sent m (findRanges (snd 
+                                                    (fromJust 
+                                                      (find (\(first, _) -> first == "text ") 
+                                                            m))) 
+                                                   w 
+                                                   b)) 
+          doc 
+          (sRanges doc text)
 
 
 
