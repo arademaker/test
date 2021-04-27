@@ -87,20 +87,3 @@ createTrie path = do
 
 
 
--- main interface 
-
-{-
-help :: IO ()
-help = putStrLn "morpho-br -c [classes de palavras, onde escrever] :: [filePath]"
-
-parse ["-h"]    = MorphoBr.help >> exitSuccess
-parse ("-c":ls) = createTreeList ls >> exitSuccess
-
-parse ls        = MorphoBr.help >> exitFailure
-    
-main :: IO ()
-main = getArgs >>= MorphoBr.parse
--}
-
--- para pesquisar na arvore: lookup
-

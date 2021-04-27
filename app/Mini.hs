@@ -17,10 +17,6 @@ import qualified MorphoBr as M
 import qualified Conllu.UposTagset as U
 import qualified Conllu.DeprelTagset as D
 
--- map _word sents
--- colocar as classificaçoes no deps
--- pegar a palavra no form
--- comparar com feats 
 
 ---- Merge section 
 
@@ -73,37 +69,51 @@ member x [] = False
 member x (y:ys) | x==y = True
                 | otherwise = member x ys
 
+indFeat :: [Feat] -> String
+indFeat (x:xs)
+  | (_feat x == "VerbForm") && (head (_featValues x) == "Fin") = indFeat xs
+  | (_feat x == "Tense") && (head (_featValues x) == "Fut") = "+fut" ++ (getFeatValues $ reverse xs)
+  | (_feat x == "Tense") && (head (_featValues x) == "Past") = "+prf" ++ (getFeatValues xs)
+  | (_feat x == "Tense") && (head (_featValues x) == "Pres") = "+prs" ++ (getFeatValues $ reverse xs)
+  | (_feat x == "Tense") && (head (_featValues x) == "Imp") = "+impf" ++ (getFeatValues $ reverse xs)
+  | (_feat x == "Tense") && (head (_featValues x) == "Pqp") = "+pqp" ++ (getFeatValues $ reverse xs)
+
+subFeat :: [Feat] -> String
+subFeat (x:xs)
+  | (_feat x == "VerbForm") && (head (_featValues x) == "Fin") = subFeat xs
+  | (_feat x == "Tense") && (head (_featValues x) == "Fut") = "+sbjf" ++ (getFeatValues $ reverse xs)
+  | (_feat x == "Tense") && (head (_featValues x) == "Imp") = "+sbjp" ++ (getFeatValues $ reverse xs)
+  | (_feat x == "Tense") && (head (_featValues x) == "Pres") = "+sbjr" ++ (getFeatValues $ reverse xs)
+
 getFeatValues :: [Feat] -> String
 getFeatValues (x:xs) 
   | _feat x == "Gender" = "+" ++ [toLower (head (head (_featValues x)))] ++ (getFeatValues xs)
   | (_feat x == "Number") && (head ( _featValues x) == "Plur") = "+pl" ++ (getFeatValues xs)
   | (_feat x == "Number") && (head (_featValues x) == "Sing") = "+sg" ++ (getFeatValues xs)
   | _feat x == "Person" =  "+" ++ (head (_featValues x)) ++ (getFeatValues xs)
-  | (_feat x == "Tense") && (head (_featValues x) == "Fut") = "+fut" ++ (getFeatValues xs)
-  | (_feat x == "Tense") && (head (_featValues x) == "Past") = "+prf" ++ (getFeatValues xs)
-  | (_feat x == "Tense") && (head (_featValues x) == "Pres") = "+prs" ++ (getFeatValues xs)
-  | (_feat x == "Voice") && (head (_featValues x) == "Pass") = "+ptpass" ++ (getFeatValues xs)
   | otherwise = getFeatValues xs
 getFeatValues [] = ""
 
 getUpos :: String -> U.POS -> [Feat] -> String
 getUpos lemma c (x:xs)
-  | (c == U.VERB) && (head (_featValues x) == "Ind") = lemma ++ "+v" ++ (getFeatValues $ reverse xs)
-  | (c == U.VERB) && (head (_featValues x) == "Cnd") = lemma ++ "+v+cond" ++ (getFeatValues $ reverse $ tail xs)
-  | (c == U.VERB) && (head (_featValues x) == "Sub") = lemma ++ "+v+sbjr" ++ (getFeatValues $ reverse $ tail xs)
+  | (c == U.VERB) && (head (_featValues x) == "Ind") = lemma ++ "+v" ++ (indFeat $ reverse xs)
+  | (c == U.VERB) && (head (_featValues x) == "Cnd") = lemma ++ "+v+cond" ++ (getFeatValues $ tail xs)
+  | (c == U.VERB) && (head (_featValues x) == "Sub") = lemma ++ "+v" ++ (subFeat $ reverse xs)
   | (c == U.VERB) && (head (_featValues x) == "Ger") = lemma ++ "+v+grd"
+  | (c == U.VERB) && (head (_featValues x) == "Inf") = lemma ++ "+v+inf"
+  | (c == U.VERB) && (head (_featValues $ last xs) == "Pass") = lemma ++ "+v+ptpass" ++ getFeatValues (x:xs)
   | c == U.ADJ = lemma ++ "+a" ++ (getFeatValues (x:xs))
   | c == U.NOUN = lemma ++ "+n" ++ (getFeatValues (x:xs))
   | c == U.ADV = lemma ++ "+adv"
   | otherwise = ""
-
+getUpos lemma c [] = ""
 
 -- verifica se a classificação do conllu existe no MorphoBr e retorna um erro
 -- caso não exista
 -- forma flexionada -> classificação adaptada do conllu -> classificações do MorphoBr
 getError :: String -> String -> [String] -> String
 getError word cl m 
-  | member cl (sort m) = ""
+  | member cl (sort m) = "ok"
   | otherwise = " error on " ++ cl ++ " " ++ (head m) ++ " \n"
 
 comp :: CW AW -> String
