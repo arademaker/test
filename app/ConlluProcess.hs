@@ -6,8 +6,8 @@ import Data.Either ( rights, lefts )
 import Control.Applicative ( Applicative(liftA2) )
 import System.Environment ( getArgs )
 import System.Exit ( exitSuccess, exitFailure )
-import Data.List ( isPrefixOf, findIndex, tails, find )
 import Conllu.IO ( readConlluFile, writeConlluFile )
+import Data.List ( find, isPrefixOf )
 import Data.Char ( isAlphaNum, isPunctuation )
 import Conllu.Type
 import NLU
@@ -15,15 +15,19 @@ import JsonConlluTools
 
 
 
-
 -- Token ranges identification section
 
+auxSentRanges :: Int -> String -> [String] -> [Int]
+auxSentRanges _ _ [] = []
+auxSentRanges n text (x:xs) = i:(auxSentRanges (n + i) text xs)
+  where
+    i = n + (fromJust $ subStrPos x $ drop n text)
+
 -- List of intervals where the sentences are contained.
-sRanges :: Doc -> [Range]
-sRanges doc = tail $ foldl (\l sent -> l ++ [(curChar l, curChar l + length sent)]) [(-1,-1)] s
+sRanges :: Doc -> String -> [Range]
+sRanges doc text = map (\(a, b) -> (a, a + b)) $ zip (auxSentRanges 0 text s) $ map length s
   where
     s = map (snd . fromJust . ((find (\(first, _) -> first == "text ")) . _meta)) doc
-    curChar l = snd (last l) + 1
 
 -- Write a range of a CW AW given it and maybe its initial position.
 writeRange :: CW AW -> Maybe Int -> CW AW
@@ -56,15 +60,11 @@ isNextToken str t | head str == ' ' = isNextToken (drop 1 str) t
     next = str !! max 0 (length form)
     subword = all isAlphaNum [last form, next]
 
--- Find position of substring.
-subStrPos :: String -> String -> Maybe Int
-subStrPos sub str = (($ tails str) . findIndex . isPrefixOf) sub
-
 -- Take conllu and add tokenranges.
-putRanges :: Doc -> Doc
-putRanges doc = zipWith (\(Sent m w) (b,_) -> Sent m (findRanges (snd $ last m) w b)) 
+putRanges :: Doc -> String -> Doc
+putRanges doc text = zipWith (\(Sent m w) (b,_) -> Sent m (findRanges (snd $ last m) w b)) 
                         doc 
-                        (sRanges doc)
+                        (sRanges doc text)
 
 
 
@@ -115,8 +115,9 @@ addJsonAndCheck :: Either String Document -> Doc -> IO ()
 addJsonAndCheck (Left s) _ = putStrLn $ "JSON INVÁLIDO: \n" ++ s
 addJsonAndCheck (Right js) sents = check outCll
   where
+    text = analyzed_text js
     outCll = map (\s -> metaUpdate s $ entFilter (entities js) s)
-                 (if null (mapMaybe sentRange sents) then putRanges sents else sents)
+                 (if null (mapMaybe sentRange sents) then putRanges sents text else sents)
 
 -- Recieves the filepaths, opens the files and calls addJsonAndCheck
 mergeAndCheck :: [FilePath] -> IO ()
@@ -135,8 +136,9 @@ addJson :: Either String Document -> Doc -> FilePath -> IO ()
 addJson (Left s) _ _ = putStrLn $ "JSON INVÁLIDO: \n" ++ s
 addJson (Right js) sents outpath = writeConlluFile outpath outCll
   where
+    text = analyzed_text js
     outCll = map (\s -> metaUpdate s $ entFilter (entities js) s)
-                 (if null (mapMaybe sentRange sents) then putRanges sents else sents)
+                 (if null (mapMaybe sentRange sents) then putRanges sents text else sents)
 
 -- Recieves the filepaths, opens the files and calls addJson
 merge :: [FilePath] -> IO ()

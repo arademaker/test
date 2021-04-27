@@ -2,7 +2,7 @@ module JsonConlluTools where
 
 import qualified Data.ByteString.Lazy.UTF8 as C
 import Text.Regex.TDFA ( (=~) )
-import Data.List ( intercalate )
+import Data.List ( isPrefixOf, findIndex, tails, intercalate )
 import Data.Aeson ( eitherDecode, encode )
 import Control.Applicative ( Applicative(liftA2) )
 import Data.Maybe ( mapMaybe )
@@ -18,6 +18,10 @@ isSubrange (b1, e1) (b2, e2) = b1 >= b2 && e1 <= e2
 -- Verify if element is in transversible object
 isMember :: (Foldable t, Eq a) => a -> t a -> Bool
 isMember n = foldr (\x -> (||) (n==x)) False
+
+-- Find position of substring.
+subStrPos :: String -> String -> Maybe Int
+subStrPos sub str = (($ tails str) . findIndex . isPrefixOf) sub
 
 
 -- NLU.Json manipulation
