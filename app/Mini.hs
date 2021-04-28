@@ -101,19 +101,21 @@ getUpos lemma c (x:xs)
   | (c == U.VERB) && (head (_featValues x) == "Sub") = lemma ++ "+v" ++ (subFeat $ reverse xs)
   | (c == U.VERB) && (head (_featValues x) == "Ger") = lemma ++ "+v+grd"
   | (c == U.VERB) && (head (_featValues x) == "Inf") = lemma ++ "+v+inf"
+  | (c == U.VERB) && (head (_featValues x) == "Part") = lemma ++ "+v+ptpass"
   | (c == U.VERB) && (head (_featValues $ last xs) == "Pass") = lemma ++ "+v+ptpass" ++ getFeatValues (x:xs)
   | c == U.ADJ = lemma ++ "+a" ++ (getFeatValues (x:xs))
   | c == U.NOUN = lemma ++ "+n" ++ (getFeatValues (x:xs))
+  | otherwise = ""
+getUpos lemma c [] 
   | c == U.ADV = lemma ++ "+adv"
   | otherwise = ""
-getUpos lemma c [] = ""
 
 -- verifica se a classificação do conllu existe no MorphoBr e retorna um erro
 -- caso não exista
 -- forma flexionada -> classificação adaptada do conllu -> classificações do MorphoBr
 getError :: String -> String -> [String] -> String
 getError word cl m 
-  | member cl (sort m) = "ok"
+  | member cl (sort m) = "ok " ++ word ++ " | "
   | otherwise = " error on " ++ cl ++ " " ++ (head m) ++ " \n"
 
 comp :: CW AW -> String
