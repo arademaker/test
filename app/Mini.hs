@@ -72,29 +72,31 @@ member x (y:ys) | x==y = True
 indFeat :: [Feat] -> String
 indFeat (x:xs)
   | (_feat x == "VerbForm") && (head (_featValues x) == "Fin") = indFeat xs
-  | (_feat x == "Tense") && (head (_featValues x) == "Fut") = "+fut" ++ (getFeatValues $ reverse xs)
+  | (_feat x == "Tense") && (head (_featValues x) == "Fut") = "+fut" ++ (getFeatValues xs)
   | (_feat x == "Tense") && (head (_featValues x) == "Past") = "+prf" ++ (getFeatValues xs)
-  | (_feat x == "Tense") && (head (_featValues x) == "Pres") = "+prs" ++ (getFeatValues $ reverse xs)
-  | (_feat x == "Tense") && (head (_featValues x) == "Imp") = "+impf" ++ (getFeatValues $ xs)
-  | (_feat x == "Tense") && (head (_featValues x) == "Pqp") = "+pqp" ++ (getFeatValues $ reverse xs)
+  | (_feat x == "Tense") && (head (_featValues x) == "Pres") = "+prs" ++ (getFeatValues xs)
+  | (_feat x == "Tense") && (head (_featValues x) == "Imp") = "+impf" ++ (getFeatValues xs)
+  | (_feat x == "Tense") && (head (_featValues x) == "Pqp") = "+pqp" ++ (getFeatValues xs)
   | otherwise = getFeatValues (x:xs)
 indFeat [] = ""
 
 subFeat :: [Feat] -> String
 subFeat (x:xs)
   | (_feat x == "VerbForm") && (head (_featValues x) == "Fin") = subFeat xs
-  | (_feat x == "Tense") && (head (_featValues x) == "Fut") = "+sbjf" ++ (getFeatValues $ reverse xs)
-  | (_feat x == "Tense") && (head (_featValues x) == "Imp") = "+sbjp" ++ (getFeatValues $ reverse xs)
-  | (_feat x == "Tense") && (head (_featValues x) == "Pres") = "+sbjr" ++ (getFeatValues $ reverse xs)
+  | (_feat x == "Tense") && (head (_featValues x) == "Fut") = "+sbjf" ++ (getFeatValues xs)
+  | (_feat x == "Tense") && (head (_featValues x) == "Imp") = "+sbjp" ++ (getFeatValues xs)
+  | (_feat x == "Tense") && (head (_featValues x) == "Pres") = "+sbjr" ++ (getFeatValues xs)
   | otherwise = getFeatValues (x:xs)
 subFeat [] = ""
 
 getFeatValues :: [Feat] -> String
 getFeatValues (x:xs)
+  | _feat (last (x:xs)) == "Gender" = "+" ++ [toLower (head (head (_featValues $ last (x:xs))))] ++ (getFeatValues $ init (x:xs))
   | _feat x == "Gender" = "+" ++ [toLower (head (head (_featValues x)))] ++ (getFeatValues xs)
   | (_feat x == "Number") && (head ( _featValues x) == "Plur") = "+pl" ++ (getFeatValues xs)
   | (_feat x == "Number") && (head (_featValues x) == "Sing") = "+sg" ++ (getFeatValues xs)
   | _feat x == "Person" =  "+" ++ (head (_featValues x)) ++ (getFeatValues xs)
+  | (_feat x == "Polarity") && (head (_featValues x) == "Neg") = "+neg"
   | otherwise = getFeatValues xs
 getFeatValues [] = ""
 
@@ -104,11 +106,12 @@ getUpos lemma c (x:xs)
   | (c == U.VERB) && (head (_featValues x) == "Cnd") = lemma ++ "+v+cond" ++ (getFeatValues $ tail xs)
   | (c == U.VERB) && (head (_featValues x) == "Sub") = lemma ++ "+v" ++ (subFeat $ reverse xs)
   | (c == U.VERB) && (head (_featValues x) == "Ger") = lemma ++ "+v+grd"
-  | (c == U.VERB) && (head (_featValues x) == "Inf") = lemma ++ "+v+inf"
-  | (c == U.VERB) && (head (_featValues $ last (x:xs)) == "Part") = lemma ++ "+v+ptpass"
-  | (c == U.VERB) && (head (_featValues $ last xs) == "Pass") = lemma ++ "+v+ptpass" ++ getFeatValues (x:xs)
+  | (c == U.VERB) && (head (_featValues $ last (x:xs)) == "Inf") = lemma ++ "+v+inf" ++ (getFeatValues $ reverse (x:xs)) 
+  | (c == U.VERB) && (head (_featValues $ last (x:xs)) == "Part") = lemma ++ "+v+ptpass" ++ (getFeatValues $ reverse $ init (x:xs))
+  | (c == U.VERB) && (head (_featValues $ last xs) == "Pass") = lemma ++ "+v+ptpass" ++ (getFeatValues (x:xs))
   | c == U.ADJ = lemma ++ "+a" ++ (getFeatValues (x:xs))
   | c == U.NOUN = lemma ++ "+n" ++ (getFeatValues (x:xs))
+  | c == U.ADV = lemma ++ "+adv" ++ (getFeatValues (x:xs))
   | otherwise = ""
 getUpos lemma c []
   | c == U.ADV = lemma ++ "+adv"
@@ -146,14 +149,6 @@ checkCl sent  = concatMap aux (_words sent)
     | (fromJust $ _upos word) == U.ADV   = comp word
     | otherwise = ""
 
-{-
-check :: [FilePath] -> IO [()]
-check = mapM aux 
- where 
-   aux clpath = do 
-    cl <- readConlluFile clpath 
-    print $ concatMap checkCl cl 
--}
 check :: [FilePath] -> IO ()
 check (x:xs) = do
   cl <- readConllu x
