@@ -8,6 +8,7 @@ import Data.List
 import Control.Applicative ( Applicative(liftA2) )
 import System.Environment ( getArgs )
 import System.Exit ( exitFailure, exitSuccess )
+import System.IO (appendFile)
 import System.FilePath.Posix
 import Conllu.IO ( readConlluFile, writeConlluFile, readConllu )
 import Conllu.Type
@@ -109,6 +110,13 @@ getUpos lemma c (x:xs)
   | (c == U.VERB) && (head (_featValues $ last (x:xs)) == "Inf") = lemma ++ "+v+inf" ++ (getFeatValues $ reverse (x:xs)) 
   | (c == U.VERB) && (head (_featValues $ last (x:xs)) == "Part") = lemma ++ "+v+ptpass" ++ (getFeatValues $ reverse $ init (x:xs))
   | (c == U.VERB) && (head (_featValues $ last xs) == "Pass") = lemma ++ "+v+ptpass" ++ (getFeatValues (x:xs))
+  | (c == U.AUX) && (head (_featValues x) == "Ind") = lemma ++ "+v" ++ (indFeat $ reverse xs)
+  | (c == U.AUX) && (head (_featValues x) == "Cnd") = lemma ++ "+v+cond" ++ (getFeatValues $ tail xs)
+  | (c == U.AUX) && (head (_featValues x) == "Sub") = lemma ++ "+v" ++ (subFeat $ reverse xs)
+  | (c == U.AUX) && (head (_featValues x) == "Ger") = lemma ++ "+v+grd"
+  | (c == U.AUX) && (head (_featValues $ last (x:xs)) == "Inf") = lemma ++ "+v+inf" ++ (getFeatValues $ reverse (x:xs)) 
+  | (c == U.AUX) && (head (_featValues $ last (x:xs)) == "Part") = lemma ++ "+v+ptpass" ++ (getFeatValues $ reverse $ init (x:xs))
+  | (c == U.AUX) && (head (_featValues $ last xs) == "Pass") = lemma ++ "+v+ptpass" ++ (getFeatValues (x:xs))
   | c == U.ADJ = lemma ++ "+a" ++ (getFeatValues (x:xs))
   | c == U.NOUN = lemma ++ "+n" ++ (getFeatValues (x:xs))
   | c == U.ADV = lemma ++ "+adv" ++ (getFeatValues (x:xs))
@@ -145,6 +153,7 @@ checkCl trie sent  = concatMap aux (_words sent)
    aux word
     | isNothing(_upos word) = ""
     | (fromJust $ _upos word) == U.VERB  = comp trie word
+    | (fromJust $ _upos word) == U.AUX  = comp trie word
     | (fromJust $ _upos word) == U.NOUN  = comp trie word
     | (fromJust $ _upos word) == U.ADJ   = comp trie word
     | (fromJust $ _upos word) == U.ADV   = comp trie word
@@ -168,11 +177,11 @@ comp trie word = getError w (getUpos lemma upos feat) morpho
 
 newCheck :: [FilePath] -> IO ()
 newCheck (x:y:xs) = do
-  trie <- M.readJSON x
-  mapM_ (aux (T.fromList $ M.getList trie)) (y:xs)
+  trie <- M.readJSON y
+  mapM_ (aux (T.fromList $ M.getList trie)) xs
  where aux t clpath = do
         cl <- readConlluFile clpath
-        print ("Processing " ++ clpath ++ " " ++ (concatMap (checkCl t) cl))
+        appendFile x ("Processing " ++ clpath ++ " " ++ (concatMap (checkCl t) cl) ++ "\n")
 
 
 -- main interface
