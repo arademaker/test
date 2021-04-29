@@ -124,8 +124,9 @@ getUpos lemma c []
 getError :: String -> String -> [String] -> String
 getError word cl m
   | member cl (sort m) = ""
-  | otherwise = " error on " ++ word ++ " " ++ cl ++" " ++ (show m) ++ " \n "
+  | otherwise = " error on " ++ word ++ ": " ++ cl ++" options: " ++ (intercalate ", " m) ++ " | "
 
+{-
 comp :: CW AW -> String
 comp word = getError w (getUpos lemma upos feat) morpho
  where
@@ -134,25 +135,45 @@ comp word = getError w (getUpos lemma upos feat) morpho
   upos = fromJust $ _upos word
   feat = _feats word
   morpho = fromJust $ _rest $ head $ _deps word
-
+-}
 
 -- se a palavra for um verbo, nome, adjetivo ou advérbio, chamamos a função 
 -- que verifica se a classificação existe 
-checkCl :: Sent -> String
-checkCl sent  = concatMap aux (_words sent)
+checkCl :: T.Trie [String] -> Sent -> String
+checkCl trie sent  = concatMap aux (_words sent)
  where
    aux word
     | isNothing(_upos word) = ""
-    | (fromJust $ _upos word) == U.VERB  = comp word
-    | (fromJust $ _upos word) == U.NOUN  = comp word
-    | (fromJust $ _upos word) == U.ADJ   = comp word
-    | (fromJust $ _upos word) == U.ADV   = comp word
+    | (fromJust $ _upos word) == U.VERB  = comp trie word
+    | (fromJust $ _upos word) == U.NOUN  = comp trie word
+    | (fromJust $ _upos word) == U.ADJ   = comp trie word
+    | (fromJust $ _upos word) == U.ADV   = comp trie word
     | otherwise = ""
-
+{-
 check :: [FilePath] -> IO ()
 check (x:xs) = do
   cl <- readConllu x
   mapM_ (print . (concatMap checkCl)) cl
+-}
+-- new section 
+
+comp :: T.Trie [String] -> CW AW -> String
+comp trie word = getError w (getUpos lemma upos feat) morpho
+ where
+  w = fromJust $ _form word
+  lemma = fromJust $ _lemma word
+  upos = fromJust $ _upos word
+  feat = _feats word
+  morpho = search $ T.lookup (M.packStr $ map toLower ( fromJust $_form word)) trie
+
+newCheck :: [FilePath] -> IO ()
+newCheck (x:y:xs) = do
+  trie <- M.readJSON x
+  mapM_ (aux (T.fromList $ M.getList trie)) (y:xs)
+ where aux t clpath = do
+        cl <- readConlluFile clpath
+        print ("Processing " ++ clpath ++ " " ++ (concatMap (checkCl t) cl))
+
 
 -- main interface
 
@@ -164,7 +185,7 @@ help = putStrLn "Usage: \n\
 parse ["-h"]    = help >> exitSuccess
 parse ("-t":ls) = M.createTrieList ls >> exitSuccess
 parse ("-m":ls) = merge ls >> exitSuccess
-parse ("-c":ls) = check ls >> exitSuccess
+parse ("-c":ls) = newCheck ls >> exitSuccess
 
 parse ls        = help >> exitFailure
 
