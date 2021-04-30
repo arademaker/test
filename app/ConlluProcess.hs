@@ -111,7 +111,7 @@ entClean e s = if null nodes then Nothing else
 
 -- Update sent metadata with list of CleanEntity
 metaUpdate :: Sent -> [Entity] -> Sent
-metaUpdate s e = Sent (_meta s ++ [("mentions", cMenTOstr $ mapMaybe (`entClean` s) e)]) (_words s)
+metaUpdate s e = Sent (_meta s ++ [("mentions ", cMenTOstr $ mapMaybe (`entClean` s) e)]) (_words s)
 
 -- Filter CleanEntity list with the ones that belong to the Sent given
 entFilter :: [Entity] -> Sent -> [Entity]
