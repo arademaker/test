@@ -52,7 +52,7 @@ addMorphoInfo trie = map aux
 createFilePath :: FilePath -> FilePath -> FilePath
 createFilePath directory cl = addExtension (combine directory (takeBaseName cl)) "conllu"
 
--- [outpath, jsonPath, conllu files ]
+-- [outpath, jsonPath, conllu files]
 merge :: [FilePath] -> IO [()]
 merge (x:y:xs) = do
   tl  <- M.readJSON y
@@ -73,30 +73,30 @@ member x (y:ys) | x==y = True
 indFeat :: [Feat] -> String
 indFeat (x:xs)
   | (_feat x == "VerbForm") && (head (_featValues x) == "Fin") = indFeat xs
-  | (_feat x == "Tense") && (head (_featValues x) == "Fut") = "+fut" ++ (getFeatValues xs)
-  | (_feat x == "Tense") && (head (_featValues x) == "Past") = "+prf" ++ (getFeatValues xs)
-  | (_feat x == "Tense") && (head (_featValues x) == "Pres") = "+prs" ++ (getFeatValues xs)
-  | (_feat x == "Tense") && (head (_featValues x) == "Imp") = "+impf" ++ (getFeatValues xs)
-  | (_feat x == "Tense") && (head (_featValues x) == "Pqp") = "+pqp" ++ (getFeatValues xs)
+  | (_feat x == "Tense") && (head (_featValues x) == "Fut")  = "+fut"  ++ (getFeatValues xs)
+  | (_feat x == "Tense") && (head (_featValues x) == "Past") = "+prf"  ++ (getFeatValues xs)
+  | (_feat x == "Tense") && (head (_featValues x) == "Pres") = "+prs"  ++ (getFeatValues xs)
+  | (_feat x == "Tense") && (head (_featValues x) == "Imp")  = "+impf" ++ (getFeatValues xs)
+  | (_feat x == "Tense") && (head (_featValues x) == "Pqp")  = "+pqp"  ++ (getFeatValues xs)
   | otherwise = getFeatValues (x:xs)
 indFeat [] = ""
 
 subFeat :: [Feat] -> String
 subFeat (x:xs)
-  | (_feat x == "VerbForm") && (head (_featValues x) == "Fin") = subFeat xs
-  | (_feat x == "Tense") && (head (_featValues x) == "Fut") = "+sbjf" ++ (getFeatValues xs)
-  | (_feat x == "Tense") && (head (_featValues x) == "Imp") = "+sbjp" ++ (getFeatValues xs)
-  | (_feat x == "Tense") && (head (_featValues x) == "Pres") = "+sbjr" ++ (getFeatValues xs)
+  | (_feat x == "VerbForm") && (head (_featValues x) == "Fin")  = subFeat xs
+  | (_feat x == "Tense")    && (head (_featValues x) == "Fut")  = "+sbjf" ++ (getFeatValues xs)
+  | (_feat x == "Tense")    && (head (_featValues x) == "Imp")  = "+sbjp" ++ (getFeatValues xs)
+  | (_feat x == "Tense")    && (head (_featValues x) == "Pres") = "+sbjr" ++ (getFeatValues xs)
   | otherwise = getFeatValues (x:xs)
 subFeat [] = ""
 
 getFeatValues :: [Feat] -> String
 getFeatValues (x:xs)
   | _feat (last (x:xs)) == "Gender" = "+" ++ [toLower (head (head (_featValues $ last (x:xs))))] ++ (getFeatValues $ init (x:xs))
-  | _feat x == "Gender" = "+" ++ [toLower (head (head (_featValues x)))] ++ (getFeatValues xs)
+  | _feat x  == "Gender" = "+" ++ [toLower (head (head (_featValues x)))] ++ (getFeatValues xs)
   | (_feat x == "Number") && (head ( _featValues x) == "Plur") = "+pl" ++ (getFeatValues xs)
-  | (_feat x == "Number") && (head (_featValues x) == "Sing") = "+sg" ++ (getFeatValues xs)
-  | _feat x == "Person" =  "+" ++ (head (_featValues x)) ++ (getFeatValues xs)
+  | (_feat x == "Number") && (head (_featValues x)  == "Sing") = "+sg" ++ (getFeatValues xs)
+  | _feat x  == "Person" =  "+" ++ (head (_featValues x)) ++ (getFeatValues xs)
   | (_feat x == "Polarity") && (head (_featValues x) == "Neg") = "+neg"
   | otherwise = getFeatValues xs
 getFeatValues [] = ""
@@ -109,20 +109,20 @@ getUpos lemma c (x:xs)
   | (c == U.VERB) && (head (_featValues x) == "Ger") = lemma ++ "+v+grd"
   | (c == U.VERB) && (head (_featValues $ last (x:xs)) == "Inf") = lemma ++ "+v+inf" ++ (getFeatValues $ reverse (x:xs)) 
   | (c == U.VERB) && (head (_featValues $ last (x:xs)) == "Part") = lemma ++ "+v+ptpass" ++ (getFeatValues $ reverse $ init (x:xs))
-  | (c == U.VERB) && (head (_featValues $ last xs) == "Pass") = lemma ++ "+v+ptpass" ++ (getFeatValues (x:xs))
-  | (c == U.AUX) && (head (_featValues x) == "Ind") = lemma ++ "+v" ++ (indFeat $ reverse xs)
-  | (c == U.AUX) && (head (_featValues x) == "Cnd") = lemma ++ "+v+cond" ++ (getFeatValues $ tail xs)
-  | (c == U.AUX) && (head (_featValues x) == "Sub") = lemma ++ "+v" ++ (subFeat $ reverse xs)
-  | (c == U.AUX) && (head (_featValues x) == "Ger") = lemma ++ "+v+grd"
-  | (c == U.AUX) && (head (_featValues $ last (x:xs)) == "Inf") = lemma ++ "+v+inf" ++ (getFeatValues $ reverse (x:xs)) 
-  | (c == U.AUX) && (head (_featValues $ last (x:xs)) == "Part") = lemma ++ "+v+ptpass" ++ (getFeatValues $ reverse $ init (x:xs))
-  | (c == U.AUX) && (head (_featValues $ last xs) == "Pass") = lemma ++ "+v+ptpass" ++ (getFeatValues (x:xs))
-  | c == U.ADJ = lemma ++ "+a" ++ (getFeatValues (x:xs))
-  | c == U.NOUN = lemma ++ "+n" ++ (getFeatValues (x:xs))
-  | c == U.ADV = lemma ++ "+adv" ++ (getFeatValues (x:xs))
+  | (c == U.VERB) && (head (_featValues $ last xs)     == "Pass") = lemma ++ "+v+ptpass" ++ (getFeatValues (x:xs))
+  | (c == U.AUX)  && (head (_featValues x) == "Ind") = lemma ++ "+v" ++ (indFeat $ reverse xs)
+  | (c == U.AUX)  && (head (_featValues x) == "Cnd") = lemma ++ "+v+cond" ++ (getFeatValues $ tail xs)
+  | (c == U.AUX)  && (head (_featValues x) == "Sub") = lemma ++ "+v" ++ (subFeat $ reverse xs)
+  | (c == U.AUX)  && (head (_featValues x) == "Ger") = lemma ++ "+v+grd"
+  | (c == U.AUX)  && (head (_featValues $ last (x:xs)) == "Inf") = lemma ++ "+v+inf" ++ (getFeatValues $ reverse (x:xs)) 
+  | (c == U.AUX)  && (head (_featValues $ last (x:xs)) == "Part") = lemma ++ "+v+ptpass" ++ (getFeatValues $ reverse $ init (x:xs))
+  | (c == U.AUX)  && (head (_featValues $ last xs)     == "Pass") = lemma ++ "+v+ptpass" ++ (getFeatValues (x:xs))
+  | c == U.ADJ  = lemma ++ "+a"   ++ (getFeatValues (x:xs))
+  | c == U.NOUN = lemma ++ "+n"   ++ (getFeatValues (x:xs))
+  | c == U.ADV  = lemma ++ "+adv" ++ (getFeatValues (x:xs))
   | otherwise = ""
 getUpos lemma c []
-  | c == U.ADV = lemma ++ "+adv"
+  | c == U.ADV  = lemma ++ "+adv"
   | c == U.NOUN = lemma ++ "+n"
   | otherwise = ""
 
@@ -134,16 +134,14 @@ getError word cl m
   | member cl (sort m) = ""
   | otherwise = " error on " ++ word ++ ": " ++ cl ++" options: " ++ (intercalate ", " m) ++ " | "
 
-{-
-comp :: CW AW -> String
-comp word = getError w (getUpos lemma upos feat) morpho
+comp :: T.Trie [String] -> CW AW -> String
+comp trie word = getError w (getUpos lemma upos feat) morpho
  where
-  w = fromJust $ _form word
-  lemma = fromJust $ _lemma word
-  upos = fromJust $ _upos word
-  feat = _feats word
-  morpho = fromJust $ _rest $ head $ _deps word
--}
+  w      = fromJust $ _form word
+  lemma  = fromJust $ _lemma word
+  upos   = fromJust $ _upos word
+  feat   = _feats word
+  morpho = search $ T.lookup (M.packStr $ map toLower ( fromJust $_form word)) trie
 
 -- se a palavra for um verbo, nome, adjetivo ou advérbio, chamamos a função 
 -- que verifica se a classificação existe 
@@ -153,27 +151,11 @@ checkCl trie sent  = concatMap aux (_words sent)
    aux word
     | isNothing(_upos word) = ""
     | (fromJust $ _upos word) == U.VERB  = comp trie word
-    | (fromJust $ _upos word) == U.AUX  = comp trie word
+    | (fromJust $ _upos word) == U.AUX   = comp trie word
     | (fromJust $ _upos word) == U.NOUN  = comp trie word
     | (fromJust $ _upos word) == U.ADJ   = comp trie word
     | (fromJust $ _upos word) == U.ADV   = comp trie word
     | otherwise = ""
-{-
-check :: [FilePath] -> IO ()
-check (x:xs) = do
-  cl <- readConllu x
-  mapM_ (print . (concatMap checkCl)) cl
--}
--- new section 
-
-comp :: T.Trie [String] -> CW AW -> String
-comp trie word = getError w (getUpos lemma upos feat) morpho
- where
-  w = fromJust $ _form word
-  lemma = fromJust $ _lemma word
-  upos = fromJust $ _upos word
-  feat = _feats word
-  morpho = search $ T.lookup (M.packStr $ map toLower ( fromJust $_form word)) trie
 
 newCheck :: [FilePath] -> IO ()
 newCheck (x:y:xs) = do
@@ -189,7 +171,7 @@ newCheck (x:y:xs) = do
 help = putStrLn "Usage: \n\
                 \ test-mini -t [classes de palavras, onde escrever] :: [filePath] \n\
                 \ test-mini -m [outPath, jsonPath, conlluPaths]\n\
-                \ test-mini -c [conlluPAths]\n"
+                \ test-mini -c [outPath, jsonPath, conlluPAths]\n"
 
 parse ["-h"]    = help >> exitSuccess
 parse ("-t":ls) = M.createTrieList ls >> exitSuccess
