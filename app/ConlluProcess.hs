@@ -15,15 +15,18 @@ import JsonConlluTools
 
 
 
--- Token ranges identification section
+-- Part 1: Token ranges identification section
 
+
+-- Receive an integer (the cut-off point of the text), the text and 
+-- a list of sentences and returns the list of ranges
 auxSentRanges :: Int -> String -> [String] -> [Range]
 auxSentRanges _ _ [] = []
 auxSentRanges n text (x:xs) = (i, i + length x):(auxSentRanges (i + (length x) - 1) text xs)
   where
     i = n + (fromJust $ subStrPos x $ drop n text)
 
--- List of intervals where the sentences are contained.
+-- List of ranges of sents in text (analyzed_text)
 sRanges :: Doc -> String -> [Range]
 sRanges doc text = auxSentRanges 0 text s
   where
@@ -76,7 +79,7 @@ putRanges doc text =
 
 
 
--- File Merge Section.
+-- Part 2: File Merge Section.
 
 
 -- Verify if CleanEntity belongs to Sent
@@ -158,7 +161,7 @@ merge _ = help >> exitFailure
 
 
 
--- Check section
+-- Part 3: Check section
 
 
 -- Recieves nodes IDs list, nodes heads list and verifies tree consistance
