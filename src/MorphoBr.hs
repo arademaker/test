@@ -18,6 +18,7 @@ import Data.Aeson
 import GHC.Generics
 import System.Exit
 import System.Environment
+import System.Directory (listDirectory)
 import Control.Applicative
 
 data Document = 
@@ -58,6 +59,23 @@ createList words = aux (map getPairs words)
 
 toDoc :: [(String,[String])] -> Document
 toDoc ls = Document {classes = [], trieList = ls}
+
+newGetList :: [FilePath] -> IO [(String,String)]
+newGetList (x:xs) = do
+   t <- readFile x
+   foldl merge (getPairs t) (func2 xs)
+newGetList [] = []
+
+createTrieList ::[FilePath] -> IO (Trie [String])
+createTrieList paths = do
+  ls <- newGetList paths 
+  return (fromList $ map (first packStr) (getKey ls))
+
+newCreateTrie :: [String] -> IO (Trie [String])
+newCreateTrie ds = do
+   paths <- concatMap listDirectory ds
+   createTrieList paths
+
 
 
 -- Recebe os arquivos (concatenados) adjectives, adverbs, nouns, verbs e uma path onde 
