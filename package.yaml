@@ -29,6 +29,9 @@ dependencies:
 - bytestring
 - regex-tdfa
 - utf8-string
+- containers
+- split
+- directory
 
 library:
   source-dirs: src
