@@ -18,7 +18,7 @@ import Data.Aeson
 import GHC.Generics
 import System.Exit
 import System.Environment
-import System.Directory (listDirectory)
+import System.Directory (listDirectory,getDirectoryContents)
 import Control.Applicative
 
 data Document = 
@@ -60,21 +60,36 @@ createList words = aux (map getPairs words)
 toDoc :: [(String,[String])] -> Document
 toDoc ls = Document {classes = [], trieList = ls}
 
-newGetList :: [FilePath] -> IO [(String,String)]
-newGetList (x:xs) = do
-   t <- readFile x
-   foldl merge (getPairs t) (func2 xs)
-newGetList [] = []
 
-createTrieList ::[FilePath] -> IO (Trie [String])
-createTrieList paths = do
-  ls <- newGetList paths 
-  return (fromList $ map (first packStr) (getKey ls))
+{-
+func :: [[(String,String)]] -> [(BS.ByteString,[String])]
+func paths = (map (first packStr) (getKey (foldl merge [] paths)))
 
-newCreateTrie :: [String] -> IO (Trie [String])
+func2 :: [[FilePath]] -> Trie [String]
+func2 paths = fromList $ func (map aux paths)
+ where 
+    aux (x:xs) = do
+    t <- readFile x
+    merge (getPairs t) (aux xs)
+
+newCreateTrie :: [String] -> Trie [String]
 newCreateTrie ds = do
-   paths <- concatMap listDirectory ds
-   createTrieList paths
+   p <- mapM listDirectory ds
+   return ((func2 p))
+-}
+
+func :: [String] -> [(String,String)]
+func (x:xs) = merge (getPairs x) (func xs)
+func _ = []
+
+newCreateTrie :: [FilePath] -> Trie [String]
+newCreateTrie ds = fromList (map (first packStr) (getKey (foldl merge [] (map aux ds))))
+ where 
+   aux :: FilePath -> [(String,String)]
+   aux path = do
+    ps <- getDirectoryContents path
+    fs <- mapM readFile ps
+    func fs
 
 
 
