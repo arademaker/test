@@ -45,7 +45,7 @@ extra-deps:
     commit: a9c895aa2d3b2cc10916e45c629bc6cb224a0db8
   - git: https://github.com/arademaker/punkt
     commit: cdb1d808c4b9b7b0f83ede5c022da6ee5b86fbfa
-
+  - bytestring-trie-0.2.5.0@sha256:9efa9c6f556314d28486be2470ff789419c5238ed2e354870623a3cbbd28fbe2,3349
 # Override default flag values for local packages and extra-deps
 # flags: {}
 

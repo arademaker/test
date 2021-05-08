@@ -29,6 +29,10 @@ dependencies:
 - bytestring
 - regex-tdfa
 - utf8-string
+- containers
+- split
+- directory
+- bytestring-trie
 
 library:
   source-dirs: src
@@ -64,6 +68,17 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     - -main-is NER
+    dependencies:
+    - test
+
+    test-mini:
+    main:                Mini.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -main-is Mini
     dependencies:
     - test
   
