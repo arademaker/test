@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 
 module MorphoBr where
 
@@ -5,10 +6,12 @@ import Data.Either
 import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString.Lazy.Char8 as C
 import System.IO
-import Data.Map as M
-import Data.List.Split as S
+import qualified Data.Map as M
+import qualified Data.List.Split as S
 import System.Directory
 import System.FilePath.Posix
+import qualified Data.Text as T
+import qualified Data.Text.IO as TO
 
 -- read MorphoBr file
 readF fn = do
@@ -21,20 +24,18 @@ readF fn = do
   hClose hdl
   putStrLn "done!"
 
-lines2pairs :: [String] -> [(String,[String])]
+
+lines2pairs :: [T.Text] -> [(T.Text,[T.Text])]
 lines2pairs =
-  Prelude.map
-    (\l ->
-       let lst = S.splitOn "\t" l
-        in (head lst, [lst !! 1]))
+  Prelude.map (\s -> let p = T.breakOn "\t:" s in (fst p, [snd p]))
 
 
-readF1 :: FilePath -> IO (Map String [String])
+readF1 :: FilePath -> IO (M.Map T.Text [T.Text])
 readF1 fn = do
-  content <- readFile fn
-  return $ M.fromListWith (++) $ lines2pairs (lines content)
+  content <- TO.readFile fn
+  return $ M.fromListWith (++) $ lines2pairs (T.lines content)
  
 readD path = do
   lfiles <- listDirectory path
   dicts  <- mapM (readF1 . combine path) lfiles
-  return (Prelude.foldr M.union (M.empty :: Map String [String]) dicts)
+  return (Prelude.foldr M.union (M.empty :: M.Map T.Text [T.Text]) dicts)
