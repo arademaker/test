@@ -24,4 +24,4 @@ readF1 fn = do
 readD path = do
   lfiles <- listDirectory path
   dicts  <- mapM (readF1 . combine path) lfiles
-  return (foldr M.union (M.empty :: M.Map T.Text [T.Text]) dicts)
+  return (foldr M.union M.empty dicts)
