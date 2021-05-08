@@ -27,7 +27,7 @@ readF fn = do
 
 lines2pairs :: [T.Text] -> [(T.Text,[T.Text])]
 lines2pairs =
-  Prelude.map (\s -> let p = T.breakOn "\t:" s in (fst p, [snd p]))
+  Prelude.map (\s -> let p = T.breakOn "\t" s in (fst p, [snd p]))
 
 
 readF1 :: FilePath -> IO (M.Map T.Text [T.Text])
