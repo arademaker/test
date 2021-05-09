@@ -132,7 +132,7 @@ getUpos lemma c []
 getError :: String -> String -> [String] -> String
 getError word cl m
   | member cl (sort m) = ""
-  | otherwise = " error on " ++ word ++ ": " ++ cl ++" options: " ++ (intercalate ", " m) ++ " | "
+  | otherwise = " | " ++ word ++ " : " ++ cl ++" : " ++ (intercalate ", " m)
 
 comp :: T.Trie [String] -> CW AW -> String
 comp trie word = getError w (getUpos lemma upos feat) morpho
@@ -143,10 +143,21 @@ comp trie word = getError w (getUpos lemma upos feat) morpho
   feat   = _feats word
   morpho = search $ T.lookup (M.packStr $ map toLower ( fromJust $_form word)) trie
 
+findSent :: [Comment] -> String
+findSent (x:xs) 
+ | fst x == "text " = snd x
+ | otherwise = findSent xs
+findSent [] = "sentence not found"
+
+addSent :: Sent -> String -> String
+addSent sent s 
+ | s == "" = ""
+ | otherwise = (findSent (_meta sent)) ++ s ++ "\n"
+
 -- se a palavra for um verbo, nome, adjetivo ou advérbio, chamamos a função 
 -- que verifica se a classificação existe 
 checkCl :: T.Trie [String] -> Sent -> String
-checkCl trie sent  = concatMap aux (_words sent)
+checkCl trie sent  = addSent sent (concatMap aux (_words sent))
  where
    aux word
     | isNothing(_upos word) = ""
@@ -163,7 +174,7 @@ newCheck (x:y:xs) = do
   mapM_ (aux (T.fromList $ M.getList trie)) xs
  where aux t clpath = do
         cl <- readConlluFile clpath
-        appendFile x ("Processing " ++ clpath ++ " " ++ (concatMap (checkCl t) cl) ++ "\n")
+        appendFile x ("Processing " ++ clpath ++ " \n" ++ (concatMap (checkCl t) cl) ++ "\n")
 
 
 -- main interface
