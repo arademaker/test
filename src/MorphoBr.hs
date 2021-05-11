@@ -1,122 +1,103 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 module MorphoBr where
 
 import Data.Either
-import System.Environment 
-import System.Exit 
-import qualified Data.ByteString.Lazy as B
---import qualified Data.ByteString.Lazy.Char8 as LC
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy.Char8 as C
+import System.IO
+import qualified Data.Map as M
+import System.Directory
+import System.FilePath.Posix
 import qualified Data.Text as T
-import Data.Text.Encoding (encodeUtf8)
-import Data.Char (ord)
-import Data.Trie
-import Data.List
-import Data.Bifunctor (first)
-import Data.Aeson 
-import GHC.Generics
-import System.Exit
-import System.Environment
-import System.Directory (listDirectory,getDirectoryContents)
-import Control.Applicative
+import qualified Data.Text.IO as TO
 
-data Document = 
-  Document
-  {classes :: [String]
-  , trieList :: [(String,[String])]
-  } deriving(Show, Generic)
-
-instance FromJSON Document
-instance ToJSON Document where
-  toEncoding = genericToEncoding defaultOptions
-
-packStr, packStr'' :: String -> BS.ByteString
-packStr   = BS.pack . map (fromIntegral . ord)
---packStr'  = C.pack
-packStr'' = encodeUtf8 . T.pack
-
-getKey :: [(String,String)] -> [(String,[String ])]
-getKey l = map aux (groupBy (\la lb -> fst la == fst lb) l) 
- where aux (x:xs) 
-        | length (x:xs) == 1 = (fst x, [snd x])
-        | otherwise = (fst x, map snd (x:xs))
-
-getPairs :: String -> [(String,String )] 
-getPairs xs = map (aux . words) (lines xs)
- where aux l = (head l, last l)
-
-merge :: [(String,String )] -> [(String,String )] -> [(String,String )] 
-merge (x:xs) (y:ys) = if fst x < fst y
-                        then x: merge xs (y:ys)
-                        else y: merge (x:xs) ys
-merge [] xs = xs
-merge xs [] = xs
-
-createList :: [String] -> [(String,String)]
-createList words = aux (map getPairs words)
- where aux xs = foldl merge [] xs
-
-toDoc :: [(String,[String])] -> Document
-toDoc ls = Document {classes = [], trieList = ls}
+lines2pairs :: [T.Text] -> [(T.Text,[T.Text])]
+lines2pairs =
+  map (\s -> let p = T.breakOn "\t" s in (fst p, [snd p]))
 
 
-{-
-func :: [[(String,String)]] -> [(BS.ByteString,[String])]
-func paths = (map (first packStr) (getKey (foldl merge [] paths)))
+readF1 :: FilePath -> IO (M.Map T.Text [T.Text])
+readF1 fn = do
+  content <- TO.readFile fn
+  return $ M.fromListWith (++) $ lines2pairs (T.lines content)
+ 
+readD :: FilePath -> IO (M.Map T.Text [T.Text])
+readD path = do
+  lfiles <- listDirectory path
+  dicts  <- mapM (readF1 . combine path) lfiles
+  return (foldr M.union M.empty dicts)
 
-func2 :: [[FilePath]] -> Trie [String]
-func2 paths = fromList $ func (map aux paths)
+toStr :: Morpho -> String
+toStr a = (lemma a)++"+"++(cat a)++"+"++(verb a)++"+"++(person a)++"+"++(grau a)++"+"++(gender a)++"+"++(number a)
+
+aux :: T.Text -> [Morpho]
+aux l = do
+  let (x:xs) = map  T.unpack (T.splitOn "+" l)
+  getMorpho (xs) (Morpho {lemma=x,cat="",verb="",person="",gender="",number="",grau=""})
+ 
+
+unificate :: [T.Text] -> [T.Text]
+unificate ls = map T.pack (foldl func2 [] (map aux ls))
  where 
-    aux (x:xs) = do
-    t <- readFile x
-    merge (getPairs t) (aux xs)
+   func2 a b 
+    | (lemma a == lemma b) && 
+       (cat a == cat b) && 
+       (verb a == verb b) && 
+       (person a == person b) && 
+       (gender a == gender b) && 
+       (grau a == grau b) = 
+         return $ toStr a{number = ""}
+    | (lemma a == lemma b) && 
+       (cat a == cat b) && 
+       (verb a == verb b) && 
+       (person a == person b) && 
+       (number a == number b) &&
+       (grau a == grau b) = 
+         return $ toStr a{gender = ""} 
+    | otherwise = return $ toStr a
 
-newCreateTrie :: [String] -> Trie [String]
-newCreateTrie ds = do
-   p <- mapM listDirectory ds
-   return ((func2 p))
--}
-
-func :: [String] -> [(String,String)]
-func (x:xs) = merge (getPairs x) (func xs)
-func _ = []
-
-newCreateTrie :: [FilePath] -> Trie [String]
-newCreateTrie ds = fromList (map (first packStr) (getKey (foldl merge [] (map aux ds))))
- where 
-   aux :: FilePath -> [(String,String)]
-   aux path = do
-    ps <- getDirectoryContents path
-    fs <- mapM readFile ps
-    func fs
-
+func :: [FilePath] -> IO [M.Map T.Text [T.Text]]
+func path = do 
+  m <- mapM readD path
+  return (map (M.map unificate) m)
 
 
--- Recebe os arquivos (concatenados) adjectives, adverbs, nouns, verbs e uma path onde 
--- onde será escrito o JSON que contem a lista usada para criar a Trie
-createTrieList :: [String] -> IO ()
-createTrieList [adj,adv,noun,verb,saida] = do
-    adjectives <- readFile adj
-    adverbs <- readFile adv
-    nouns <- readFile noun
-    verbs <- readFile verb    
-    encodeFile saida $ toDoc $ getKey $ createList [adjectives,adverbs,nouns,verbs]
---createTreeList _ = MorphoBr.help >> exitFailure
+getMorpho :: [String] -> Morpho -> Morpho
+getMorpho (x:xs) m
+ | x == "V" = getMorpho xs m {cat = x} 
+ | x == "A" = getMorpho xs m {cat = x}
+ | x == "ADV" = getMorpho xs m {cat = x}
+ | x == "DIM" = getMorpho xs m {grau = x} 
+ | x == "M" = getMorpho xs m {gender = x}
+ | x == "F" = getMorpho xs m {gender = x}
+ | x == "SG" = getMorpho xs m {number = x}
+ | x == "PL" = getMorpho xs m {number = x}
+ | x == "FUT" = getMorpho xs m {verb = x}
+ | x == "PRF" = getMorpho xs m {verb = x} 
+ | x == "PRS" = getMorpho xs m {verb = x} 
+ | x == "IMPF" = getMorpho xs m {verb = x} 
+ | x == "PQP" = getMorpho xs m {verb = x}
+ | x == "SBJF" = getMorpho xs m {verb = x} 
+ | x == "SBJP" = getMorpho xs m {verb = x} 
+ | x == "SBJR" = getMorpho xs m {verb = x} 
+ | x == "3" = getMorpho xs m {person = x} 
+ | x == "2" = getMorpho xs m {person = x} 
+ | x == "1" = getMorpho xs m {person = x} 
+ | otherwise = getMorpho xs m
+getMorpho [] m = m
 
-readJSON :: FilePath -> IO (Either String Document)
-readJSON path = (eitherDecode <$> B.readFile path) :: IO (Either String Document)
-
-getList :: Either String Document -> [(BS.ByteString,[String])]
-getList (Right doc) = map (first  packStr) (trieList doc)
-
-
--- Recebe o path do JSON que contem a lista usada para criar a Trie e retorna a Trie
-createTrie :: String -> IO (Trie [String])
-createTrie path = do
-    doc <- readJSON path
-    return (fromList $  getList doc)
-
-
+data Morpho =
+  Morpho
+  {lemma :: String
+  ,cat :: String
+  ,gender :: String
+  ,number :: String
+  ,verb :: String
+  ,person :: String
+  ,mood :: String
+  ,tense :: String
+  ,verbForm :: String
+  ,voice :: String
+  ,grau :: String
+  } deriving (Show)
 
 
