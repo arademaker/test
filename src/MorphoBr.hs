@@ -10,10 +10,12 @@ import System.FilePath.Posix
 import qualified Data.Text as T
 import qualified Data.Text.IO as TO
 
+toFStruct :: [T.Text] -> [M.Map T.Text T.Text]
+
 
 lines2pairs :: [T.Text] -> [(T.Text,[T.Text])]
 lines2pairs =
-  map (\s -> let p = T.breakOn "\t" s in (fst p, [snd p]))
+  map (\s -> let p = T.splitOn "\t" s in (head p, tail p))
 
 
 readF1 :: FilePath -> IO (M.Map T.Text [T.Text])
