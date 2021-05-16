@@ -10,26 +10,8 @@ import System.FilePath.Posix
 import qualified Data.Text as T
 import qualified Data.Text.IO as TO
 import Data.List (groupBy, intercalate)
-{-
-getFeats :: [T.Text] -> [(T.Text, T.Text)]
-getFeats (t:ts)
- | t == T.pack "A" = (T.pack "Cat", T.pack "ADJ") : getFeats ts
- | t == T.pack "ADV" = (T.pack "Cat", T.pack "ADV") : getFeats ts
- | t == T.pack "N" = (T.pack "Cat", T.pack "NOUN") : getFeats ts
- | t == T.pack "V" = (T.pack "Cat", T.pack "VERB") : getFeats ts
- | t == T.pack "F" = (T.pack "Gender", T.pack "Fem") : getFeats ts
- | t == T.pack "M" = (T.pack "Gender", T.pack "Masc") : getFeats ts
- | t == T.pack "SG" = (T.pack "Number", T.pack "Sing") : getFeats ts
- | t == T.pack "PL" = (T.pack "Number", T.pack "Plur") : getFeats ts
- | t == T.pack "SUPER" = (T.pack "Degree", T.pack "Abs") : getFeats ts
- | t == T.pack "AUG" = (T.pack "Degree", T.pack "Aug") : getFeats ts
- | t == T.pack "DIM" = (T.pack "Degree", T.pack "Dim") : getFeats ts
- | otherwise = (T.pack "Lemma", t) : getFeats ts
-getFeats [] = []
 
-toFStruct :: [T.Text] -> [M.Map T.Text T.Text]
-toFStruct =  map ((M.fromList . getFeats) . T.splitOn (T.pack "+"))
--}
+
 
 lines2pairs :: [T.Text] -> [(T.Text, [T.Text])]
 lines2pairs =
