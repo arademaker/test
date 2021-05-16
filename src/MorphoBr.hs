@@ -9,95 +9,56 @@ import System.Directory
 import System.FilePath.Posix
 import qualified Data.Text as T
 import qualified Data.Text.IO as TO
+import Data.List (groupBy, intercalate)
+{-
+getFeats :: [T.Text] -> [(T.Text, T.Text)]
+getFeats (t:ts)
+ | t == T.pack "A" = (T.pack "Cat", T.pack "ADJ") : getFeats ts
+ | t == T.pack "ADV" = (T.pack "Cat", T.pack "ADV") : getFeats ts
+ | t == T.pack "N" = (T.pack "Cat", T.pack "NOUN") : getFeats ts
+ | t == T.pack "V" = (T.pack "Cat", T.pack "VERB") : getFeats ts
+ | t == T.pack "F" = (T.pack "Gender", T.pack "Fem") : getFeats ts
+ | t == T.pack "M" = (T.pack "Gender", T.pack "Masc") : getFeats ts
+ | t == T.pack "SG" = (T.pack "Number", T.pack "Sing") : getFeats ts
+ | t == T.pack "PL" = (T.pack "Number", T.pack "Plur") : getFeats ts
+ | t == T.pack "SUPER" = (T.pack "Degree", T.pack "Abs") : getFeats ts
+ | t == T.pack "AUG" = (T.pack "Degree", T.pack "Aug") : getFeats ts
+ | t == T.pack "DIM" = (T.pack "Degree", T.pack "Dim") : getFeats ts
+ | otherwise = (T.pack "Lemma", t) : getFeats ts
+getFeats [] = []
 
-lines2pairs :: [T.Text] -> [(T.Text,[T.Text])]
+toFStruct :: [T.Text] -> [M.Map T.Text T.Text]
+toFStruct =  map ((M.fromList . getFeats) . T.splitOn (T.pack "+"))
+-}
+
+lines2pairs :: [T.Text] -> [(T.Text, [T.Text])]
 lines2pairs =
-  map (\s -> let p = T.breakOn "\t" s in (fst p, [snd p]))
+  map (\s -> let p = T.splitOn "\t" s in (head p, tail p))
 
+inter :: [T.Text] -> [T.Text] -> [T.Text] 
+inter (x:xs) (y:ys)
+ | x == y = x : inter xs ys
+ | otherwise = inter xs ys
+inter [] (y:ys) = []
+inter (x:xs) [] = []
+inter [] [] = []
+
+conc :: [T.Text] -> String
+conc xs = intercalate "+" (map T.unpack xs) 
+
+aux :: [[T.Text]]-> T.Text 
+aux ls =  T.pack $ conc $ foldl1 inter ls
+
+simplify :: [T.Text] -> [T.Text]
+simplify ms = 
+  map aux $ groupBy (\a b -> (head a) == (head b)) (map (T.splitOn (T.pack "+")) ms)
 
 readF1 :: FilePath -> IO (M.Map T.Text [T.Text])
 readF1 fn = do
   content <- TO.readFile fn
-  return $ M.fromListWith (++) $ lines2pairs (T.lines content)
- 
-readD :: FilePath -> IO (M.Map T.Text [T.Text])
+  return $ M.map simplify $ M.fromListWith (++) $ lines2pairs (T.lines content)
+
 readD path = do
   lfiles <- listDirectory path
   dicts  <- mapM (readF1 . combine path) lfiles
   return (foldr M.union M.empty dicts)
-
-toStr :: Morpho -> String
-toStr a = (lemma a)++"+"++(cat a)++"+"++(verb a)++"+"++(person a)++"+"++(grau a)++"+"++(gender a)++"+"++(number a)
-
-aux :: T.Text -> [Morpho]
-aux l = do
-  let (x:xs) = map  T.unpack (T.splitOn "+" l)
-  getMorpho (xs) (Morpho {lemma=x,cat="",verb="",person="",gender="",number="",grau=""})
- 
-
-unificate :: [T.Text] -> [T.Text]
-unificate ls = map T.pack (foldl func2 [] (map aux ls))
- where 
-   func2 a b 
-    | (lemma a == lemma b) && 
-       (cat a == cat b) && 
-       (verb a == verb b) && 
-       (person a == person b) && 
-       (gender a == gender b) && 
-       (grau a == grau b) = 
-         return $ toStr a{number = ""}
-    | (lemma a == lemma b) && 
-       (cat a == cat b) && 
-       (verb a == verb b) && 
-       (person a == person b) && 
-       (number a == number b) &&
-       (grau a == grau b) = 
-         return $ toStr a{gender = ""} 
-    | otherwise = return $ toStr a
-
-func :: [FilePath] -> IO [M.Map T.Text [T.Text]]
-func path = do 
-  m <- mapM readD path
-  return (map (M.map unificate) m)
-
-
-getMorpho :: [String] -> Morpho -> Morpho
-getMorpho (x:xs) m
- | x == "V" = getMorpho xs m {cat = x} 
- | x == "A" = getMorpho xs m {cat = x}
- | x == "ADV" = getMorpho xs m {cat = x}
- | x == "DIM" = getMorpho xs m {grau = x} 
- | x == "M" = getMorpho xs m {gender = x}
- | x == "F" = getMorpho xs m {gender = x}
- | x == "SG" = getMorpho xs m {number = x}
- | x == "PL" = getMorpho xs m {number = x}
- | x == "FUT" = getMorpho xs m {verb = x}
- | x == "PRF" = getMorpho xs m {verb = x} 
- | x == "PRS" = getMorpho xs m {verb = x} 
- | x == "IMPF" = getMorpho xs m {verb = x} 
- | x == "PQP" = getMorpho xs m {verb = x}
- | x == "SBJF" = getMorpho xs m {verb = x} 
- | x == "SBJP" = getMorpho xs m {verb = x} 
- | x == "SBJR" = getMorpho xs m {verb = x} 
- | x == "3" = getMorpho xs m {person = x} 
- | x == "2" = getMorpho xs m {person = x} 
- | x == "1" = getMorpho xs m {person = x} 
- | otherwise = getMorpho xs m
-getMorpho [] m = m
-
-data Morpho =
-  Morpho
-  {lemma :: String
-  ,cat :: String
-  ,gender :: String
-  ,number :: String
-  ,verb :: String
-  ,person :: String
-  ,mood :: String
-  ,tense :: String
-  ,verbForm :: String
-  ,voice :: String
-  ,grau :: String
-  } deriving (Show)
-
-
