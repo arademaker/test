@@ -29,14 +29,19 @@ inter [] (y:ys) = []
 inter (x:xs) [] = []
 inter [] [] = []
 
+clear :: [T.Text] -> [T.Text]
+clear xs
+ | last xs == "" = init xs
+ | otherwise = xs
+
 conc :: [T.Text] -> String
-conc xs = intercalate "+" (map T.unpack xs)
+conc xs = intercalate "+" (map T.unpack (clear xs))
 
 
 simplify :: [T.Text] -> [T.Text]
 simplify ms =
   map aux $ groupBy (\a b -> (head a) == (head b)) (map (T.splitOn (T.pack "+")) (sort ms))
-   where 
+   where
      aux ls =  T.pack $ conc $ foldl1 inter ls
 
 readF1 :: FilePath -> IO (M.Map T.Text [T.Text])
@@ -58,24 +63,23 @@ getTXT [] = []
 
 check :: M.Map T.Text [T.Text] -> [T.Text] -> T.Text
 check m xs
- | isNothing $ M.lookup (head xs) m  = T.pack ""
- | otherwise = T.pack "ok"
+ | member (last xs) (fromJust (M.lookup (head xs) m)) = ""
+ | otherwise = last xs
 
 createMap :: FilePath -> [FilePath] -> IO (M.Map T.Text [T.Text])
 createMap dir paths = do
-  dicts <- mapM (readF1 . combine dir) paths 
+  dicts <- mapM (readF1 . combine dir) paths
   return (M.map simplify $ foldr M.union M.empty dicts)
 
 
-readD :: FilePath -> IO [[()]]
-readD path = do
-  lfiles <- listDirectory path
-  m <- createMap path (getDict lfiles)
-  mapM (aux m path) (getTXT lfiles)
+readD :: FilePath -> FilePath -> IO [()]
+readD mpath epath = do
+  mfiles <- listDirectory mpath
+  efiles <- listDirectory epath
+  m <- createMap mpath mfiles
+  mapM (aux m epath) efiles
    where
      aux m path f = do
        content <- TO.readFile $ combine path f
-       print(M.size m)
-       mapM (print . check m . (T.splitOn "\t")) (T.lines content)
-       
+       print (T.intercalate (T.pack " ") $ map (check m . (T.splitOn "\t")) (T.lines content))
 
