@@ -29,57 +29,41 @@ inter [] (y:ys) = []
 inter (x:xs) [] = []
 inter [] [] = []
 
-clear :: [T.Text] -> [T.Text]
-clear xs
- | last xs == "" = init xs
- | otherwise = xs
-
-conc :: [T.Text] -> String
-conc xs = intercalate "+" (map T.unpack (clear xs))
-
-
 simplify :: [T.Text] -> [T.Text]
 simplify ms =
   map aux $ groupBy (\a b -> (head a) == (head b)) (map (T.splitOn (T.pack "+")) (sort ms))
    where
-     aux ls =  T.pack $ conc $ foldl1 inter ls
+     aux ls = T.intercalate "+" $ foldl1 inter ls
 
 readF1 :: FilePath -> IO (M.Map T.Text [T.Text])
 readF1 fn = do
   content <- TO.readFile fn
   return $ M.fromListWith (++) $ lines2pairs (T.lines content)
 
-getDict :: [FilePath] -> [FilePath]
-getDict (x:xs)
- | takeExtension x == ".dict" = x:getDict xs
- | otherwise = []
-getDict [] = []
-
-getTXT :: [FilePath] -> [FilePath]
-getTXT (x:xs)
- | takeExtension x == ".txt" = x:getTXT xs
- | otherwise = []
-getTXT [] = []
-
 check :: M.Map T.Text [T.Text] -> [T.Text] -> T.Text
 check m xs
  | member (last xs) (fromJust (M.lookup (head xs) m)) = ""
- | otherwise = last xs
+ | otherwise = T.append (last xs) $ T.append " | " (T.intercalate " " (fromJust (M.lookup (head xs) m)))
 
 createMap :: FilePath -> [FilePath] -> IO (M.Map T.Text [T.Text])
 createMap dir paths = do
   dicts <- mapM (readF1 . combine dir) paths
   return (M.map simplify $ foldr M.union M.empty dicts)
 
+clean :: [T.Text] -> [T.Text]
+clean (x:xs)
+ | x == "" = clean xs
+ | otherwise = x : clean xs
+clean [] = []
 
-readD :: FilePath -> FilePath -> IO [()]
+readD :: FilePath -> FilePath -> IO [[T.Text]]
 readD mpath epath = do
   mfiles <- listDirectory mpath
   efiles <- listDirectory epath
   m <- createMap mpath mfiles
-  mapM (aux m epath) efiles
+  mapM (aux m epath) efiles 
    where
-     aux m path f = do
-       content <- TO.readFile $ combine path f
-       print (T.intercalate (T.pack " ") $ map (check m . (T.splitOn "\t")) (T.lines content))
+     aux m dir path = do
+       content <- TO.readFile $ combine dir path
+       return (clean $ map (check m . (T.splitOn "\t")) (T.lines content))
 
