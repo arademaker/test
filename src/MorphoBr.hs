@@ -48,7 +48,7 @@ check m xs
 createMap :: FilePath -> [FilePath] -> IO (M.Map T.Text [T.Text])
 createMap dir paths = do
   dicts <- mapM (readF1 . combine dir) paths
-  return (M.map simplify $ foldr M.union M.empty dicts)
+  return (fix $ M.map simplify $ foldr M.union M.empty dicts)
 
 clean :: [T.Text] -> [T.Text]
 clean (x:xs)
@@ -56,8 +56,8 @@ clean (x:xs)
  | otherwise = x : clean xs
 clean [] = []
 
-readD :: FilePath -> FilePath -> IO [[T.Text]]
-readD mpath epath = do
+getDiffs :: FilePath -> FilePath -> IO [[T.Text]]
+getDiffs mpath epath = do
   mfiles <- listDirectory mpath
   efiles <- listDirectory epath
   m <- createMap mpath mfiles
@@ -67,3 +67,27 @@ readD mpath epath = do
        content <- TO.readFile $ combine dir path
        return (clean $ map (check m . (T.splitOn "\t")) (T.lines content))
 
+erro1 :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
+erro1 m =
+  M.insert (T.pack "lebrões") [(T.pack "lebre+N+AUG+M+PL"), (T.pack "lebre+N+M+PL")] $ 
+  M.insert (T.pack "lebrão") [(T.pack "lebre+N+AUG+M+SG"),(T.pack "lebre+N+M+SG")] m
+
+erro2 :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
+erro2 m = 
+  M.insert (T.pack "zurupável") [T.pack "zurupável+A+SG"] m
+
+erro3 :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
+erro3 m =
+  M.insert (T.pack "cimbráveis") [T.pack "cimbrável+A+PL"] m
+
+fix :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
+fix m = erro1 $ erro2 $ erro3 m 
+
+serialize :: (T.Text, [T.Text]) -> [T.Text] 
+serialize (k,xs) = map (\x -> T.append k (T.append "\t" x)) xs
+
+newMorpho :: FilePath -> FilePath -> IO ()
+newMorpho path outpath = do
+  files <- listDirectory path
+  m <- createMap path files
+  TO.writeFile outpath (T.intercalate "\n" $ concatMap serialize (M.toList m))
