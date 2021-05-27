@@ -20,7 +20,7 @@ import qualified Conllu.DeprelTagset as D
 
 
 ---- Merge section 
-
+{-
 search :: Maybe [String] -> [String]
 search ls = if isNothing ls
               then ["not found"]
@@ -194,3 +194,4 @@ parse ls        = help >> exitFailure
 
 main :: IO ()
 main = getArgs >>= parse
+-}
