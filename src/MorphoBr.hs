@@ -71,7 +71,7 @@ getDiffs mpath epath = do
   mfiles <- listDirectory mpath
   efiles <- listDirectory epath
   m <- createMap mpath mfiles
-  mapM (aux m epath) efiles 
+  mapM (aux (fixA m) epath) efiles 
    where
      aux m dir path = do
        content <- TO.readFile $ combine dir path
@@ -116,19 +116,49 @@ fixN m = erro1 m
 serialize :: (T.Text, [T.Text]) -> [T.Text] 
 serialize (k,xs) = map (\x -> T.append k (T.append "\t" x)) xs
 
--- newADJ recebe o diretório adjectives do MorphoBr e um path
+checkLemma :: Int -> [T.Text] -> ([T.Text],[T.Text])
+checkLemma n xs 
+ | length xs < n = (xs,[])
+ | head(T.splitOn "+" (last (T.splitOn "\t" (xs!!n)))) == 
+   head(T.splitOn "+" (last (T.splitOn "\t" (xs!!(n-1))))) = checkLemma (n+1) xs
+ | otherwise = splitAt n xs
+
+splitEvery :: Int -> [T.Text] -> [[T.Text]]
+splitEvery _ [] = []
+splitEvery n list = first : (splitEvery n rest)
+  where
+    (first,rest) = checkLemma n list
+
+toText :: (T.Text, [T.Text ]) -> [T.Text]
+toText (k,xs) = reverse xs
+
+toPairs :: [T.Text] -> [(T.Text ,[T.Text])]
+toPairs =
+  map (\s -> let p = T.splitOn "\t" s in (head(T.splitOn "+" (last p)), [s]))
+
+separate :: Int -> [T.Text] -> [[T.Text ]]
+separate n xs = splitEvery n $ concatMap toText $ M.toList $ M.fromListWith (++) $ toPairs xs
+ 
+
+
+-- newADJ recebe o diretório adjectives do MorphoBr e um diretório
 -- onde será salva a versão compacta
-newADJ :: FilePath -> FilePath -> IO ()
-newADJ path outpath = do
+newADJ :: FilePath -> FilePath -> IO [()]
+newADJ path outdir = do
   files <- listDirectory path
   m <- createMap path files
-  TO.writeFile outpath (T.intercalate "\n" $ concatMap serialize (M.toList (fixA m)))
+  mapM (aux outdir) (separate 18560 $ concatMap serialize (M.toList (fixA m)))
+   where 
+     aux outdir (x:xs) =
+       TO.writeFile (combine outdir ("adjectives-"++[T.head x]++[T.head (last xs)])) (T.intercalate "\n" (x:xs)) 
 
--- newNouns recebe o diretório nouns do MorphoBr e um path
+-- newNouns recebe o diretório nouns do MorphoBr e um diretório
 -- onde será salva a versão compacta
-newNouns :: FilePath -> FilePath -> IO ()
-newNouns path outpath = do
+newNouns :: FilePath -> FilePath -> IO [()]
+newNouns path outdir = do
   files <- listDirectory path
   m <- createMap path files
-  TO.writeFile outpath (T.intercalate "\n" $ concatMap serialize (M.toList (fixN m)))
-
+  mapM (aux outdir) (separate 19040 $ concatMap serialize (M.toList (fixN m)))
+   where 
+     aux outdir (x:xs) =
+       TO.writeFile (combine outdir ("nouns-"++[T.head x]++[T.head (last xs)])) (T.intercalate "\n" (x:xs)) 
