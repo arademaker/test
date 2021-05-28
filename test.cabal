@@ -1,10 +1,8 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
---
--- hash: 27b530e0cc851c3fc229c658cd888cfa1692e8bf7d410a6db0e704ae5e6bbf6f
 
 name:           test
 version:        0.1.0.0
@@ -39,7 +37,6 @@ library
       aeson
     , base >=4.7 && <5
     , bytestring
-    , bytestring-trie
     , containers
     , directory
     , filepath
@@ -54,7 +51,6 @@ library
 executable test-conllu
   main-is: ConlluProcess.hs
   other-modules:
-      Mini
       NER
       Punkt
       Sentence
@@ -66,58 +62,8 @@ executable test-conllu
       aeson
     , base >=4.7 && <5
     , bytestring
-    , bytestring-trie
-    , filepath
-    , hs-conllu
-    , punkt
-    , regex-tdfa
-    , test
-    , text
-    , utf8-string
-  default-language: Haskell2010
-
-executable test-ner
-  main-is: NER.hs
-  other-modules:
-      ConlluProcess
-      Mini
-      Punkt
-      Sentence
-      Paths_test
-  hs-source-dirs:
-      app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is NER
-  build-depends:
-      aeson
-    , base >=4.7 && <5
-    , bytestring
-    , bytestring-trie
-    , filepath
-    , hs-conllu
-    , punkt
-    , regex-tdfa
-    , test
-    , text
-    , utf8-string
-  default-language: Haskell2010
-
-executable test-mini
-  main-is: Mini.hs
-  other-modules:
-      ConlluProcess
-      Mini
-      Punkt
-      Sentence
-      Paths_test
-  hs-source-dirs:
-      app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is Mini
-  build-depends:
-      aeson
-    , base >=4.7 && <5
-    , bytestring
-    , bytestring-trie
     , containers
+    , directory
     , filepath
     , hs-conllu
     , punkt
@@ -128,12 +74,36 @@ executable test-mini
     , utf8-string
   default-language: Haskell2010
 
+executable test-ner
+  main-is: NER.hs
+  other-modules:
+      ConlluProcess
+      Punkt
+      Sentence
+      Paths_test
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is NER
+  build-depends:
+      aeson
+    , base >=4.7 && <5
+    , bytestring
+    , containers
+    , directory
+    , filepath
+    , hs-conllu
+    , punkt
+    , regex-tdfa
+    , split
+    , test
+    , text
+    , utf8-string
+  default-language: Haskell2010
 
 executable test-sentence
   main-is: Sentence.hs
   other-modules:
       ConlluProcess
-      Mini
       NER
       Punkt
       Paths_test
@@ -144,11 +114,13 @@ executable test-sentence
       aeson
     , base >=4.7 && <5
     , bytestring
-    , bytestring-trie
+    , containers
+    , directory
     , filepath
     , hs-conllu
     , punkt
     , regex-tdfa
+    , split
     , test
     , text
     , utf8-string
@@ -166,11 +138,13 @@ test-suite test-test
       aeson
     , base >=4.7 && <5
     , bytestring
-    , bytestring-trie
+    , containers
+    , directory
     , filepath
     , hs-conllu
     , punkt
     , regex-tdfa
+    , split
     , test
     , text
     , utf8-string

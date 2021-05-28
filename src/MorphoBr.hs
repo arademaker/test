@@ -13,8 +13,6 @@ import Data.List (groupBy, intercalate, sort)
 import Data.Maybe ( fromJust, isNothing )
 
 
----- Criação e simplificação do map
-
 -- Na simplificação, para cada chave, os valores são ordenados e agrupados de acordo com o lema,
 -- em seguida é feita a interseção dois a dois de cada grupo 
 
