@@ -109,6 +109,11 @@ erro4  m =
   M.insert (T.pack "vilanaz") [T.pack "vilanaz+A+SG",T.pack "vilão+A+AUG+SG",T.pack "vilão+A+F+SG"] $
   M.insert (T.pack "vilanazes") [T.pack "vilanaz+A+PL",T.pack "vilão+A+AUG+PL",T.pack "vilão+A+F+PL"] m 
 
+erro5 :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
+erro5  m =
+  M.insert (T.pack "vilanaz") [T.pack "vilão+N+AUG+SG",T.pack "vilão+N+F+SG"] $
+  M.insert (T.pack "vilanazes") [T.pack "vilão+N+AUG+PL",T.pack "vilão+N+F+PL"] m 
+
 
 
 -- fixN e fixA são usadas para corrigir erros pontuais, isso é feito inserindo as entradas corretas
@@ -118,7 +123,7 @@ fixA :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
 fixA m = erro2 $ erro3 $ erro4 m 
 
 fixN :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
-fixN m = erro1 m
+fixN m = erro5 $ erro1 m
 
 
 ---- Produção de novos arquivos 
