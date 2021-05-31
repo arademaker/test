@@ -1,3 +1,4 @@
+
 {-# LANGUAGE OverloadedStrings #-}
 
 module MorphoBr where
@@ -16,7 +17,7 @@ import Data.Maybe ( fromJust, isNothing )
 -- Na simplificação, para cada chave, os valores são ordenados e agrupados de acordo com o lema,
 -- em seguida é feita a interseção dois a dois de cada grupo 
 
-member :: T.Text  -> [T.Text] -> Bool
+member :: (Eq a) => a -> [a] -> Bool
 member x [] = False
 member x (y:ys) | x==y = True
                 | otherwise = member x ys
@@ -44,8 +45,8 @@ readF1 fn = do
   content <- TO.readFile fn
   return $ M.fromListWith (++) $ lines2pairs (T.lines content)
 
-createMap :: FilePath -> [FilePath] -> IO (M.Map T.Text [T.Text])
-createMap dir paths = do
+createSimpMap :: FilePath -> [FilePath] -> IO (M.Map T.Text [T.Text])
+createSimpMap dir paths = do
   dicts <- mapM (readF1 . combine dir) paths
   return (M.map simplify $ foldr M.union M.empty dicts)
 
@@ -56,6 +57,11 @@ clean (x:xs)
 clean [] = []
 
 ---- Comparação de resultados
+
+createMap :: FilePath -> [FilePath] -> IO (M.Map T.Text [T.Text])
+createMap dir paths = do
+  dicts <- mapM (readF1 . combine dir) paths
+  return (foldr M.union M.empty dicts)
 
 check :: M.Map T.Text [T.Text] -> [T.Text] -> T.Text
 check m xs
@@ -69,7 +75,7 @@ getDiffs mpath epath = do
   mfiles <- listDirectory mpath
   efiles <- listDirectory epath
   m <- createMap mpath mfiles
-  mapM (aux (fixA m) epath) efiles 
+  mapM (aux m epath) efiles 
    where
      aux m dir path = do
        content <- TO.readFile $ combine dir path
@@ -98,12 +104,18 @@ erro3 :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
 erro3 =
   M.insert (T.pack "cimbráveis") [T.pack "cimbrável+A+PL"]
 
+erro4 :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
+erro4  m =
+  M.insert (T.pack "vilanaz") [T.pack "vilanaz+A+SG",T.pack "vilão+A+AUG+SG",T.pack "vilão+A+F+SG"] $
+  M.insert (T.pack "vilanazes") [T.pack "vilanaz+A+PL",T.pack "vilão+A+AUG+PL",T.pack "vilão+A+F+PL"] m 
+
+
 
 -- fixN e fixA são usadas para corrigir erros pontuais, isso é feito inserindo as entradas corretas
 -- Obs: ao inserir uma nova chave, se já existir uma chave igual no map, os valores da
 -- chave antiga serão substituídos pelos valores da chave nova
 fixA :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
-fixA m = erro2 $ erro3 m 
+fixA m = erro2 $ erro3 $ erro4 m 
 
 fixN :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
 fixN m = erro1 m
@@ -144,7 +156,7 @@ separate n xs = splitEvery n $ concatMap toText $ M.toList $ M.fromListWith (++)
 newADJ :: FilePath -> FilePath -> IO [()]
 newADJ path outdir = do
   files <- listDirectory path
-  m <- createMap path files
+  m <- createSimpMap path files
   mapM (aux outdir) (separate 18560 $ concatMap serialize (M.toList (fixA m)))
    where 
      aux outdir (x:xs) =
@@ -155,8 +167,53 @@ newADJ path outdir = do
 newNouns :: FilePath -> FilePath -> IO [()]
 newNouns path outdir = do
   files <- listDirectory path
-  m <- createMap path files
+  m <- createSimpMap path files
   mapM (aux outdir) (separate 19040 $ concatMap serialize (M.toList (fixN m)))
    where 
      aux outdir (x:xs) =
        TO.writeFile (combine outdir ("nouns-"++[T.head x]++[T.head (last xs)])) (T.intercalate "\n" (x:xs)) 
+
+
+---- Reconstrução a partir da versão simplificada
+
+getEntries :: [(T.Text,[T.Text])] -> [T.Text]
+getEntries (x:xs)
+ | member (last $ snd x) [T.pack "A",T.pack "N"] =
+   [T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x++[T.pack "F+PL"]))),
+    T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x++[T.pack "F+SG"]))),
+    T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x++[T.pack "M+PL"]))),
+    T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x++[T.pack "M+SG"])))] ++ getEntries xs
+ | member (tail $ snd x) [[(T.pack "A"),(T.pack "F")],[(T.pack "A"),(T.pack "M")],
+                          [(T.pack "N"),(T.pack "F")],[(T.pack "N"),(T.pack "M")]] = 
+    [T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x ++ [T.pack "PL"]))),
+     T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x ++ [T.pack "SG"])))] ++ getEntries xs
+ | member (tail (snd x)) [[(T.pack "A"),(T.pack "SG")],[(T.pack "A"),(T.pack "PL")],
+                          [(T.pack "N"),(T.pack "SG")],[(T.pack "N"),(T.pack "PL")]] =
+    [T.append (fst x) (T.append "\t" (T.intercalate "+" (init (snd x) ++ [T.pack "F"] ++ [last (snd x)]))),
+     T.append (fst x) (T.append "\t" (T.intercalate "+" (init (snd x) ++ [T.pack "M"] ++ [last (snd x)])))] ++ getEntries xs
+ | member (tail (snd x)) [[(T.pack "A"),(T.pack "AUG"),(T.pack "PL")],[(T.pack "A"),(T.pack "AUG"),(T.pack "SG")],
+                          [(T.pack "A"),(T.pack "SUPER"),(T.pack "PL")],[(T.pack "A"),(T.pack "SUPER"),(T.pack "SG")],
+                          [(T.pack "A"),(T.pack "DIM"),(T.pack "PL")],[(T.pack "A"),(T.pack "DIM"),(T.pack "SG")],
+                          [(T.pack "N"),(T.pack "AUG"),(T.pack "PL")],[(T.pack "N"),(T.pack "AUG"),(T.pack "SG")],
+                          [(T.pack "N"),(T.pack "SUPER"),(T.pack "PL")],[(T.pack "N"),(T.pack "SUPER"),(T.pack "SG")],
+                          [(T.pack "N"),(T.pack "DIM"),(T.pack "PL")],[(T.pack "N"),(T.pack "DIM"),(T.pack "SG")]] =
+    [T.append (fst x) (T.append "\t" (T.intercalate "+" (init (snd x) ++ [T.pack "F"] ++ [last (snd x)]))),
+     T.append (fst x) (T.append "\t" (T.intercalate "+" (init (snd x) ++ [T.pack "M"] ++ [last (snd x)])))] ++ getEntries xs
+ | otherwise = (T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))) : getEntries xs
+getEntries [] = []
+
+
+rebuild :: FilePath -> IO (T.Text)
+rebuild fn = do
+  content <- TO.readFile fn
+  return (T.intercalate "\n" (getEntries (map aux (T.lines content))))
+   where 
+     aux s = do
+       let p = T.splitOn "\t" s in (head p, T.splitOn "+" (last p))
+
+
+expand :: FilePath -> FilePath -> IO ()
+expand path outpath = do
+  files <- listDirectory path
+  dic <- mapM (rebuild . combine path) files
+  TO.writeFile outpath (T.intercalate "\n" dic)
