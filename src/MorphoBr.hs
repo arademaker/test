@@ -48,7 +48,7 @@ readF1 fn = do
 createSimpMap :: FilePath -> [FilePath] -> IO (M.Map T.Text [T.Text])
 createSimpMap dir paths = do
   dicts <- mapM (readF1 . combine dir) paths
-  return (M.map simplify $ foldr M.union M.empty dicts)
+  return (M.map simplify $ foldr (M.unionWith (++)) M.empty dicts)
 
 clean :: [T.Text] -> [T.Text]
 clean (x:xs)
@@ -61,7 +61,7 @@ clean [] = []
 createMap :: FilePath -> [FilePath] -> IO (M.Map T.Text [T.Text])
 createMap dir paths = do
   dicts <- mapM (readF1 . combine dir) paths
-  return (foldr M.union M.empty dicts)
+  return (foldr (M.unionWith (++)) M.empty dicts)
 
 check :: M.Map T.Text [T.Text] -> [T.Text] -> T.Text
 check m xs
@@ -104,27 +104,15 @@ erro3 :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
 erro3 =
   M.insert (T.pack "cimbráveis") [T.pack "cimbrável+A+PL"]
 
-erro4 :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
-erro4  m =
-  M.insert (T.pack "vilanaz") [T.pack "vilanaz+A+SG",T.pack "vilão+A+AUG+SG",T.pack "vilão+A+F+SG"] $
-  M.insert (T.pack "vilanazes") [T.pack "vilanaz+A+PL",T.pack "vilão+A+AUG+PL",T.pack "vilão+A+F+PL"] m 
-
-erro5 :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
-erro5  m =
-  M.insert (T.pack "vilanaz") [T.pack "vilão+N+AUG+SG",T.pack "vilão+N+F+SG"] $
-  M.insert (T.pack "vilanazes") [T.pack "vilão+N+AUG+PL",T.pack "vilão+N+F+PL"] m 
-
-
 
 -- fixN e fixA são usadas para corrigir erros pontuais, isso é feito inserindo as entradas corretas
 -- Obs: ao inserir uma nova chave, se já existir uma chave igual no map, os valores da
 -- chave antiga serão substituídos pelos valores da chave nova
 fixA :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
-fixA m = erro2 $ erro3 $ erro4 m 
+fixA m = erro2 $ erro3 m 
 
 fixN :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
-fixN m = erro5 $ erro1 m
-
+fixN m = erro1 m
 
 ---- Produção de novos arquivos 
 
