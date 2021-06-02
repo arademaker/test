@@ -10,7 +10,7 @@ import System.Directory
 import System.FilePath.Posix
 import qualified Data.Text as T
 import qualified Data.Text.IO as TO
-import Data.List (groupBy, intercalate, sort, nub)
+import Data.List (groupBy, intercalate, sort, nub, sortOn)
 import Data.Maybe ( fromJust, isNothing )
 
 
@@ -61,7 +61,7 @@ clean [] = []
 createMap :: FilePath -> [FilePath] -> IO (M.Map T.Text [T.Text])
 createMap dir paths = do
   dicts <- mapM (readF1 . combine dir) paths
-  return (foldr (M.unionWith (++)) M.empty dicts)
+  return (M.map expand $ M.map simplify $ foldr (M.unionWith (++)) M.empty dicts)
 
 check :: M.Map T.Text [T.Text] -> [T.Text] -> T.Text
 check m xs
@@ -116,8 +116,8 @@ fixN m = erro1 m
 
 ---- Produção de novos arquivos 
 
-serialize :: (T.Text, [T.Text]) -> [T.Text]
-serialize (k,xs) = map (\x -> T.append k (T.append "\t" x)) xs
+serialize :: (T.Text, [T.Text]) -> [(T.Text,T.Text)]
+serialize (k,xs) = map (\x -> (k,x)) xs
 
 checkLemma :: Int -> [T.Text] -> ([T.Text],[T.Text])
 checkLemma n xs
@@ -132,15 +132,12 @@ splitEvery n list = first : (splitEvery n rest)
   where
     (first,rest) = checkLemma n list
 
-toText :: (T.Text, [T.Text ]) -> [T.Text]
-toText (k,xs) = reverse xs
+toText :: (T.Text, T.Text) -> T.Text
+toText (k,x) = T.append k (T.append "\t" x)
 
-toPairs :: [T.Text] -> [(T.Text ,[T.Text])]
-toPairs =
-  map (\s -> let p = T.splitOn "\t" s in (head(T.splitOn "+" (last p)), [s]))
 
-separate :: Int -> [T.Text] -> [[T.Text ]]
-separate n xs = splitEvery n $ concatMap toText $ M.toList $ M.fromListWith (++) $ toPairs xs
+separate :: Int -> [(T.Text,T.Text)] -> [[T.Text]]
+separate n xs = splitEvery n (map toText (sortOn snd xs))
 
 
 
@@ -150,10 +147,11 @@ newADJ :: FilePath -> FilePath -> IO [()]
 newADJ path outdir = do
   files <- listDirectory path
   m <- createSimpMap path files
-  mapM (aux outdir) (separate 18560 $ concatMap serialize (M.toList (fixA m)))
+  mapM (aux outdir) (separate 19000 $ concatMap serialize (M.toAscList (fixA m)))
    where
      aux outdir (x:xs) =
-       TO.writeFile (combine outdir ("adjectives-"++[T.head x]++[T.head (last xs)])) (T.intercalate "\n" (x:xs))
+       TO.writeFile (combine outdir ("adjectives-"++[T.head x]++[T.head (last xs)]++".dict")) 
+       (T.append (T.intercalate "\n" (x:xs)) "\n")
 
 -- newNouns recebe o diretório nouns do MorphoBr e um diretório
 -- onde será salva a versão compacta
@@ -161,42 +159,50 @@ newNouns :: FilePath -> FilePath -> IO [()]
 newNouns path outdir = do
   files <- listDirectory path
   m <- createSimpMap path files
-  mapM (aux outdir) (separate 19040 $ concatMap serialize (M.toList (fixN m)))
+  mapM (aux outdir) (separate 19000 $ concatMap serialize (M.toAscList (fixN m)))
    where
      aux outdir (x:xs) =
-       TO.writeFile (combine outdir ("nouns-"++[T.head x]++[T.head (last xs)])) (T.intercalate "\n" (x:xs))
+       TO.writeFile (combine outdir ("nouns-"++[T.head x]++[T.head (last xs)]++".dict")) 
+       (T.append (T.intercalate "\n" (x:xs)) "\n")
 
 
 ---- Reconstrução a partir da versão simplificada
 
-getEntries :: [(T.Text,[T.Text])] -> [T.Text]
-getEntries (x:xs)
+getEntries :: (T.Text,[T.Text]) -> [T.Text]
+getEntries x
  | not (member (T.pack "F") (snd x) || member (T.pack "M") (snd x)) &&
      not (member (T.pack "SG") (snd x) || member (T.pack "PL") (snd x)) =
-        [T.append (fst x) (T.append "\t" $ T.intercalate "+" (snd x ++ [T.pack "F",T.pack "SG"])),
-         T.append (fst x) (T.append "\t" $ T.intercalate "+" (snd x ++ [T.pack "F",T.pack "PL"])),
-         T.append (fst x) (T.append "\t" $ T.intercalate "+" (snd x ++ [T.pack "M",T.pack "SG"])),
-         T.append (fst x) (T.append "\t" $ T.intercalate "+" (snd x ++ [T.pack "M",T.pack "PL"]))] ++ getEntries xs
+        [T.intercalate "+" (snd x ++ [T.pack "F",T.pack "SG"]),
+         T.intercalate "+" (snd x ++ [T.pack "F",T.pack "PL"]),
+         T.intercalate "+" (snd x ++ [T.pack "M",T.pack "SG"]),
+         T.intercalate "+" (snd x ++ [T.pack "M",T.pack "PL"])] 
   | not (member (T.pack "PL") (snd x)) && not (member (T.pack "SG") (snd x)) =
-    [T.append (fst x) (T.append "\t" $ T.intercalate "+" (snd x ++ [T.pack "PL"])),
-     T.append (fst x) (T.append "\t" $ T.intercalate "+" (snd x ++ [T.pack "SG"]))] ++ getEntries xs
+    [T.intercalate "+" (snd x ++ [T.pack "PL"]),
+     T.intercalate "+" (snd x ++ [T.pack "SG"])]
   | not (member (T.pack "F") (snd x)) && not (member (T.pack "M") (snd x)) =
-    [T.append (fst x) (T.append "\t" $ T.intercalate "+" (init (snd x) ++ [T.pack "F"]++ [last (snd x)])),
-     T.append (fst x) (T.append "\t" $ T.intercalate "+" (init (snd x) ++ [T.pack "M"]++ [last (snd x)]))] ++ getEntries xs
-  | otherwise = T.append (fst x) (T.append "\t" $  T.intercalate "+" (snd x)) : getEntries xs
-getEntries [] = []
+    [T.intercalate "+" (init (snd x) ++ [T.pack "F"]++ [last (snd x)]),
+     T.intercalate "+" (init (snd x) ++ [T.pack "M"]++ [last (snd x)])]
+  | otherwise = [T.intercalate "+" (snd x)]
 
-rebuild :: FilePath -> IO T.Text
-rebuild fn = do
-  content <- TO.readFile fn
-  return (T.intercalate "\n" (getEntries (map aux (T.lines content))))
+expand :: [T.Text] -> [T.Text]
+expand = concatMap  (getEntries . aux) 
    where
      aux s = do
        let p = T.splitOn "\t" s in (head p, T.splitOn "+" (last p))
 
+createExpMap :: FilePath -> [FilePath] -> IO (M.Map T.Text [T.Text])
+createExpMap dir paths = do
+  dicts <- mapM (readF1 . combine dir) paths
+  return (M.map expand $ foldr (M.unionWith (++)) M.empty dicts)
 
-expand :: FilePath -> FilePath -> IO ()
-expand path outpath = do
-  files <- listDirectory path
-  dic <- mapM (rebuild . combine path) files
-  TO.writeFile outpath (T.intercalate "\n" dic)
+
+checkExpand :: FilePath -> FilePath -> IO [[T.Text]]
+checkExpand mpath cpath = do
+  mfiles <- listDirectory mpath
+  cfiles <- listDirectory cpath
+  m <- createExpMap mpath mfiles
+  mapM (aux m cpath) cfiles
+   where
+     aux m dir path = do
+       content <- TO.readFile $ combine dir path
+       return (clean $ map (check m . (T.splitOn "\t")) (T.lines content))
