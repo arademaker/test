@@ -88,7 +88,9 @@ getDiffs mpath epath = do
 erro1 :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
 erro1 m =
   M.insert (T.pack "lebrões") [(T.pack "lebre+N+AUG+M+PL"), (T.pack "lebre+N+M+PL")] $
-  M.insert (T.pack "lebrão") [(T.pack "lebre+N+AUG+M+SG"),(T.pack "lebre+N+M+SG")] m
+  M.insert (T.pack "lebrão") [(T.pack "lebre+N+AUG+M+SG"),(T.pack "lebre+N+M+SG")] $
+  M.insert (T.pack "lebrãozinho") [(T.pack "lebre+N+AUG+DIM+M+SG"),(T.pack "lebre+N+DIM+M+SG")] $
+  M.insert (T.pack "lebrõezinhos") [(T.pack "lebre+N+AUG+DIM+M+PL"),(T.pack "lebre+N+DIM+M+PL")] m
 
 -- a simplificação de "zurupável" estava errada, o motivo desse erro foi a duplicação de 
 -- "zurupável	zurupável+A+M+SG" no arquivo adjectives-ae.dict
