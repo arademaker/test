@@ -10,7 +10,7 @@ import System.Directory
 import System.FilePath.Posix
 import qualified Data.Text as T
 import qualified Data.Text.IO as TO
-import Data.List (groupBy, intercalate, sort)
+import Data.List (groupBy, intercalate, sort, nub)
 import Data.Maybe ( fromJust, isNothing )
 
 
@@ -36,7 +36,7 @@ inter [] [] = []
 
 simplify :: [T.Text] -> [T.Text]
 simplify ms =
-  map aux $ groupBy (\a b -> (head a) == (head b)) (map (T.splitOn (T.pack "+")) (sort ms))
+  map aux $ groupBy (\a b -> (head a) == (head b)) (map (T.splitOn (T.pack "+")) (nub $ sort ms))
    where
      aux ls = T.intercalate "+" $ foldl1 inter ls
 
@@ -75,7 +75,7 @@ getDiffs mpath epath = do
   mfiles <- listDirectory mpath
   efiles <- listDirectory epath
   m <- createMap mpath mfiles
-  mapM (aux m epath) efiles 
+  mapM (aux m epath) efiles
    where
      aux m dir path = do
        content <- TO.readFile $ combine dir path
@@ -87,13 +87,13 @@ getDiffs mpath epath = do
 -- arquivo nouns-ac.dict
 erro1 :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
 erro1 m =
-  M.insert (T.pack "lebrões") [(T.pack "lebre+N+AUG+M+PL"), (T.pack "lebre+N+M+PL")] $ 
+  M.insert (T.pack "lebrões") [(T.pack "lebre+N+AUG+M+PL"), (T.pack "lebre+N+M+PL")] $
   M.insert (T.pack "lebrão") [(T.pack "lebre+N+AUG+M+SG"),(T.pack "lebre+N+M+SG")] m
 
 -- a simplificação de "zurupável" estava errada, o motivo desse erro foi a duplicação de 
 -- "zurupável	zurupável+A+M+SG" no arquivo adjectives-ae.dict
 erro2 :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
-erro2 = 
+erro2 =
   M.insert (T.pack "zurupável") [T.pack "zurupável+A+SG"]
 
 
@@ -109,20 +109,20 @@ erro3 =
 -- Obs: ao inserir uma nova chave, se já existir uma chave igual no map, os valores da
 -- chave antiga serão substituídos pelos valores da chave nova
 fixA :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
-fixA m = erro2 $ erro3 m 
+fixA m = erro2 $ erro3 m
 
 fixN :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
 fixN m = erro1 m
 
 ---- Produção de novos arquivos 
 
-serialize :: (T.Text, [T.Text]) -> [T.Text] 
+serialize :: (T.Text, [T.Text]) -> [T.Text]
 serialize (k,xs) = map (\x -> T.append k (T.append "\t" x)) xs
 
 checkLemma :: Int -> [T.Text] -> ([T.Text],[T.Text])
-checkLemma n xs 
+checkLemma n xs
  | length xs < n = (xs,[])
- | head(T.splitOn "+" (last (T.splitOn "\t" (xs!!n)))) == 
+ | head(T.splitOn "+" (last (T.splitOn "\t" (xs!!n)))) ==
    head(T.splitOn "+" (last (T.splitOn "\t" (xs!!(n-1))))) = checkLemma (n+1) xs
  | otherwise = splitAt n xs
 
@@ -141,7 +141,7 @@ toPairs =
 
 separate :: Int -> [T.Text] -> [[T.Text ]]
 separate n xs = splitEvery n $ concatMap toText $ M.toList $ M.fromListWith (++) $ toPairs xs
- 
+
 
 
 -- newADJ recebe o diretório adjectives do MorphoBr e um diretório
@@ -151,9 +151,9 @@ newADJ path outdir = do
   files <- listDirectory path
   m <- createSimpMap path files
   mapM (aux outdir) (separate 18560 $ concatMap serialize (M.toList (fixA m)))
-   where 
+   where
      aux outdir (x:xs) =
-       TO.writeFile (combine outdir ("adjectives-"++[T.head x]++[T.head (last xs)])) (T.intercalate "\n" (x:xs)) 
+       TO.writeFile (combine outdir ("adjectives-"++[T.head x]++[T.head (last xs)])) (T.intercalate "\n" (x:xs))
 
 -- newNouns recebe o diretório nouns do MorphoBr e um diretório
 -- onde será salva a versão compacta
@@ -162,45 +162,35 @@ newNouns path outdir = do
   files <- listDirectory path
   m <- createSimpMap path files
   mapM (aux outdir) (separate 19040 $ concatMap serialize (M.toList (fixN m)))
-   where 
+   where
      aux outdir (x:xs) =
-       TO.writeFile (combine outdir ("nouns-"++[T.head x]++[T.head (last xs)])) (T.intercalate "\n" (x:xs)) 
+       TO.writeFile (combine outdir ("nouns-"++[T.head x]++[T.head (last xs)])) (T.intercalate "\n" (x:xs))
 
 
 ---- Reconstrução a partir da versão simplificada
 
 getEntries :: [(T.Text,[T.Text])] -> [T.Text]
 getEntries (x:xs)
- | member (last $ snd x) [T.pack "A",T.pack "N"] =
-   [T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x++[T.pack "F+PL"]))),
-    T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x++[T.pack "F+SG"]))),
-    T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x++[T.pack "M+PL"]))),
-    T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x++[T.pack "M+SG"])))] ++ getEntries xs
- | member (tail $ snd x) [[(T.pack "A"),(T.pack "F")],[(T.pack "A"),(T.pack "M")],
-                          [(T.pack "N"),(T.pack "F")],[(T.pack "N"),(T.pack "M")]] = 
-    [T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x ++ [T.pack "PL"]))),
-     T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x ++ [T.pack "SG"])))] ++ getEntries xs
- | member (tail (snd x)) [[(T.pack "A"),(T.pack "SG")],[(T.pack "A"),(T.pack "PL")],
-                          [(T.pack "N"),(T.pack "SG")],[(T.pack "N"),(T.pack "PL")]] =
-    [T.append (fst x) (T.append "\t" (T.intercalate "+" (init (snd x) ++ [T.pack "F"] ++ [last (snd x)]))),
-     T.append (fst x) (T.append "\t" (T.intercalate "+" (init (snd x) ++ [T.pack "M"] ++ [last (snd x)])))] ++ getEntries xs
- | member (tail (snd x)) [[(T.pack "A"),(T.pack "AUG"),(T.pack "PL")],[(T.pack "A"),(T.pack "AUG"),(T.pack "SG")],
-                          [(T.pack "A"),(T.pack "SUPER"),(T.pack "PL")],[(T.pack "A"),(T.pack "SUPER"),(T.pack "SG")],
-                          [(T.pack "A"),(T.pack "DIM"),(T.pack "PL")],[(T.pack "A"),(T.pack "DIM"),(T.pack "SG")],
-                          [(T.pack "N"),(T.pack "AUG"),(T.pack "PL")],[(T.pack "N"),(T.pack "AUG"),(T.pack "SG")],
-                          [(T.pack "N"),(T.pack "SUPER"),(T.pack "PL")],[(T.pack "N"),(T.pack "SUPER"),(T.pack "SG")],
-                          [(T.pack "N"),(T.pack "DIM"),(T.pack "PL")],[(T.pack "N"),(T.pack "DIM"),(T.pack "SG")]] =
-    [T.append (fst x) (T.append "\t" (T.intercalate "+" (init (snd x) ++ [T.pack "F"] ++ [last (snd x)]))),
-     T.append (fst x) (T.append "\t" (T.intercalate "+" (init (snd x) ++ [T.pack "M"] ++ [last (snd x)])))] ++ getEntries xs
- | otherwise = (T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))) : getEntries xs
+ | not (member (T.pack "F") (snd x) || member (T.pack "M") (snd x)) &&
+     not (member (T.pack "SG") (snd x) || member (T.pack "PL") (snd x)) =
+        [T.append (fst x) (T.append "\t" $ T.intercalate "+" (snd x ++ [T.pack "F",T.pack "SG"])),
+         T.append (fst x) (T.append "\t" $ T.intercalate "+" (snd x ++ [T.pack "F",T.pack "PL"])),
+         T.append (fst x) (T.append "\t" $ T.intercalate "+" (snd x ++ [T.pack "M",T.pack "SG"])),
+         T.append (fst x) (T.append "\t" $ T.intercalate "+" (snd x ++ [T.pack "M",T.pack "PL"]))] ++ getEntries xs
+  | not (member (T.pack "PL") (snd x)) && not (member (T.pack "SG") (snd x)) =
+    [T.append (fst x) (T.append "\t" $ T.intercalate "+" (snd x ++ [T.pack "PL"])),
+     T.append (fst x) (T.append "\t" $ T.intercalate "+" (snd x ++ [T.pack "SG"]))] ++ getEntries xs
+  | not (member (T.pack "F") (snd x)) && not (member (T.pack "M") (snd x)) =
+    [T.append (fst x) (T.append "\t" $ T.intercalate "+" (init (snd x) ++ [T.pack "F"]++ [last (snd x)])),
+     T.append (fst x) (T.append "\t" $ T.intercalate "+" (init (snd x) ++ [T.pack "M"]++ [last (snd x)]))] ++ getEntries xs
+  | otherwise = T.append (fst x) (T.append "\t" $  T.intercalate "+" (snd x)) : getEntries xs
 getEntries [] = []
 
-
-rebuild :: FilePath -> IO (T.Text)
+rebuild :: FilePath -> IO T.Text
 rebuild fn = do
   content <- TO.readFile fn
   return (T.intercalate "\n" (getEntries (map aux (T.lines content))))
-   where 
+   where
      aux s = do
        let p = T.splitOn "\t" s in (head p, T.splitOn "+" (last p))
 
