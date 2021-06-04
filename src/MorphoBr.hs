@@ -11,6 +11,7 @@ import System.FilePath.Posix
 import qualified Data.Text as T
 import qualified Data.Text.IO as TO
 import Data.List (groupBy, intercalate, sort, nub, sortOn)
+import Data.List.Split (splitPlaces, chunksOf)
 import Data.Maybe ( fromJust, isNothing )
 
 
@@ -141,11 +142,6 @@ toText (k,x) = T.append k (T.append "\t" x)
 separate :: Int -> [(T.Text,T.Text)] -> [[T.Text]]
 separate n xs = splitEvery n (map toText (sortOn snd xs))
 
-divi :: M.Map T.Text [T.Text] -> [M.Map T.Text [T.Text]]
-divi m = let 
-  (p,q) =  M.split (T.pack "decister") m
-  (a,b) = M.split (T.pack "nomant") q
-  in [p,a,b]
 
 -- newADJ recebe o diretório adjectives do MorphoBr e um diretório
 -- onde será salva a versão compacta
@@ -153,7 +149,8 @@ newADJ :: FilePath -> FilePath -> IO ()
 newADJ path outdir = do
   files <- listDirectory path
   m <- createSimpMap path files
-  TO.writeFile (combine outdir ("adjectives")) (T.intercalate "\n" (map toText (concatMap serialize (M.toList $ fixA m))))
+  TO.writeFile (combine outdir ("adjectives")) 
+   (T.intercalate "\n" (map toText (sortOn snd $ concatMap serialize (M.toList $ fixA m))))
 
 
 -- newNouns recebe o diretório nouns do MorphoBr e um diretório
@@ -162,8 +159,25 @@ newNouns :: FilePath -> FilePath -> IO ()
 newNouns path outdir = do
   files <- listDirectory path
   m <- createSimpMap path files
-  TO.writeFile (combine outdir ("nouns")) (T.intercalate "\n" (map toText (concatMap serialize (M.toList $ fixN m))))
+  TO.writeFile (combine outdir ("nouns")) 
+   (T.intercalate "\n" (map toText (sortOn snd $ concatMap serialize (M.toList $ fixN m))))
 
+splitDict :: FilePath -> FilePath -> IO [()] 
+splitDict path outdir = do
+  dict <- TO.readFile path 
+  mapM (aux outdir) (chunksOf 18000 $ T.lines dict)
+   where 
+     aux outdir (x:xs) =
+       TO.writeFile (combine outdir ("nouns-"++[T.head x]++[T.head (last xs)])) (T.intercalate "\n" (x:xs)) 
+
+divi :: FilePath -> FilePath -> IO [()] 
+divi path outdir = do
+  files <- listDirectory path
+  m <- createSimpMap path files
+  mapM (aux outdir) (chunksOf 19000 (map toText (concatMap serialize (M.toList $ fixA m))))
+   where
+    aux outdir (x:xs) =
+     TO.writeFile (combine outdir ("adjectives-"++[T.head x]++[T.head (last xs)])) (T.intercalate "\n" (x:xs)) 
 
 ---- Reconstrução a partir da versão simplificada
 
