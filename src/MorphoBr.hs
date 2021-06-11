@@ -136,8 +136,8 @@ newADJ path outdir = do
   mapM (aux outdir) (splitEvery 19000 (map toText (sortOn snd $ concatMap serialize (M.toList $ fixA m))))
    where
     aux outdir (x:xs) =
-     TO.writeFile (combine outdir ("adjectives-"++(take 3 $ T.unpack x))) (T.intercalate "\n" (x:xs)) 
-
+     TO.writeFile (combine outdir ("adjectives-"++(take 3 $ T.unpack x)++".dict")) 
+     (T.append (T.intercalate "\n" (x:xs)) "\n")
 -- newNouns recebe o diretório nouns do MorphoBr e um diretório
 -- onde será salva a versão compacta
 newNouns :: FilePath -> FilePath -> IO [()]
@@ -147,7 +147,8 @@ newNouns path outdir = do
   mapM (aux outdir) (splitEvery 19000 (map toText (sortOn snd $ concatMap serialize (M.toList $ fixN m))))
    where
     aux outdir (x:xs) =
-     TO.writeFile (combine outdir ("nouns-"++(take 3 $ T.unpack x))) (T.intercalate "\n" (x:xs)) 
+     TO.writeFile (combine outdir ("nouns-"++(take 3 $ T.unpack x)++".dict")) 
+     (T.append (T.intercalate "\n" (x:xs)) "\n") 
 
 
 ---- Reconstrução a partir da versão simplificada
