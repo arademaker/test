@@ -1,3 +1,4 @@
+
 {-# LANGUAGE OverloadedStrings #-}
 
 module MorphoBr where
@@ -9,14 +10,17 @@ import System.Directory
 import System.FilePath.Posix
 import qualified Data.Text as T
 import qualified Data.Text.IO as TO
-import Data.List (groupBy, intercalate, sort)
+import Data.List (groupBy, intercalate, sort, nub, sortOn)
+import Data.List.Split (splitPlaces, chunksOf)
 import Data.Maybe ( fromJust, isNothing )
 
 
--- Na simplificação, para cada chave, os valores são ordenados e agrupados de acordo com o lema,
--- em seguida é feita a interseção dois a dois de cada grupo 
+---- Simplificação
 
-member :: T.Text  -> [T.Text] -> Bool
+-- Na simplificação, para cada chave, os valores são ordenados e agrupados de acordo com o lema,
+-- em seguida é feita a interseção de cada grupo 
+
+member :: (Eq a) => a -> [a] -> Bool
 member x [] = False
 member x (y:ys) | x==y = True
                 | otherwise = member x ys
@@ -35,7 +39,7 @@ inter [] [] = []
 
 simplify :: [T.Text] -> [T.Text]
 simplify ms =
-  map aux $ groupBy (\a b -> (head a) == (head b)) (map (T.splitOn (T.pack "+")) (sort ms))
+  map aux $ groupBy (\a b -> (head a) == (head b)) (map (T.splitOn (T.pack "+")) (nub $ sort ms))
    where
      aux ls = T.intercalate "+" $ foldl1 inter ls
 
@@ -44,10 +48,10 @@ readF1 fn = do
   content <- TO.readFile fn
   return $ M.fromListWith (++) $ lines2pairs (T.lines content)
 
-createMap :: FilePath -> [FilePath] -> IO (M.Map T.Text [T.Text])
-createMap dir paths = do
+createSimpMap :: FilePath -> [FilePath] -> IO (M.Map T.Text [T.Text])
+createSimpMap dir paths = do
   dicts <- mapM (readF1 . combine dir) paths
-  return (M.map simplify $ foldr M.union M.empty dicts)
+  return (M.map simplify $ foldr (M.unionWith (++)) M.empty dicts)
 
 clean :: [T.Text] -> [T.Text]
 clean (x:xs)
@@ -57,19 +61,23 @@ clean [] = []
 
 ---- Comparação de resultados
 
+createMap :: FilePath -> [FilePath] -> IO (M.Map T.Text [T.Text])
+createMap dir paths = do
+  dicts <- mapM (readF1 . combine dir) paths
+  return (foldr (M.unionWith (++)) M.empty dicts)
+
 check :: M.Map T.Text [T.Text] -> [T.Text] -> T.Text
 check m xs
  | member (last xs) (fromJust (M.lookup (head xs) m)) = ""
  | otherwise = T.append (last xs) $ T.append " | " (T.intercalate " " (fromJust (M.lookup (head xs) m)))
 
--- recebe o diretório noun ou o diretório adjectives do MorphoBr e um diretório contendo os
--- arquivos produzidos pelo script em python
+-- recebe dois diretórios e compara seus arquivos pesquisando as entradas do segundo no map do primeiro 
 getDiffs :: FilePath -> FilePath -> IO [[T.Text]]
 getDiffs mpath epath = do
   mfiles <- listDirectory mpath
   efiles <- listDirectory epath
   m <- createMap mpath mfiles
-  mapM (aux (fixA m) epath) efiles 
+  mapM (aux m epath) efiles
    where
      aux m dir path = do
        content <- TO.readFile $ combine dir path
@@ -77,47 +85,34 @@ getDiffs mpath epath = do
 
 ---- Correção de erros
 
--- lebrão e lebrões foram simplificados mas não deveriam ser
--- arquivo nouns-ac.dict
-erro1 :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
-erro1 m =
-  M.insert (T.pack "lebrões") [(T.pack "lebre+N+AUG+M+PL"), (T.pack "lebre+N+M+PL")] $ 
-  M.insert (T.pack "lebrão") [(T.pack "lebre+N+AUG+M+SG"),(T.pack "lebre+N+M+SG")] m
-
--- a simplificação de "zurupável" estava errada, o motivo desse erro foi a duplicação de 
--- "zurupável	zurupável+A+M+SG" no arquivo adjectives-ae.dict
-erro2 :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
-erro2 = 
-  M.insert (T.pack "zurupável") [T.pack "zurupável+A+SG"]
-
-
--- "cimbráveis" não era simplificado porque ao unir os maps de cada arquivo do diretório adjectives
--- o valor da chave "cimbráveis" (cimbrável+A+F+PL), produzido pelo map do arquivo adjectives-aa.dict, 
--- era substituído  pelo valor (cimbrável+A+M+PL) produzido pelo map do arquivo adjectives-ab.dict
-erro3 :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
-erro3 =
-  M.insert (T.pack "cimbráveis") [T.pack "cimbrável+A+PL"]
-
-
 -- fixN e fixA são usadas para corrigir erros pontuais, isso é feito inserindo as entradas corretas
 -- Obs: ao inserir uma nova chave, se já existir uma chave igual no map, os valores da
 -- chave antiga serão substituídos pelos valores da chave nova
-fixA :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
-fixA m = erro2 $ erro3 m 
 
+-- lebrão e lebrões foram simplificados mas não deveriam ser
 fixN :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
-fixN m = erro1 m
+fixN m =
+  M.insert (T.pack "lebrões") [(T.pack "lebre+N+AUG+M+PL"), (T.pack "lebre+N+M+PL")] $
+  M.insert (T.pack "lebrão") [(T.pack "lebre+N+AUG+M+SG"),(T.pack "lebre+N+M+SG")] $
+  M.insert (T.pack "lebrãozinho") [(T.pack "lebre+N+AUG+DIM+M+SG"),(T.pack "lebre+N+DIM+M+SG")] $
+  M.insert (T.pack "lebrõezinhos") [(T.pack "lebre+N+AUG+DIM+M+PL"),(T.pack "lebre+N+DIM+M+PL")] m
+
+-- a simplificação de "zurupável" estava errada, o motivo desse erro foi a duplicação de 
+-- "zurupável	zurupável+A+M+SG" no arquivo adjectives-ae.dict
+fixA :: M.Map T.Text [T.Text] -> M.Map T.Text [T.Text]
+fixA =
+  M.insert (T.pack "zurupável") [T.pack "zurupável+A+SG"]
 
 
 ---- Produção de novos arquivos 
 
-serialize :: (T.Text, [T.Text]) -> [T.Text] 
-serialize (k,xs) = map (\x -> T.append k (T.append "\t" x)) xs
+serialize :: (T.Text, [T.Text]) -> [(T.Text,T.Text)]
+serialize (k,xs) = map (\x -> (k,x)) xs
 
 checkLemma :: Int -> [T.Text] -> ([T.Text],[T.Text])
-checkLemma n xs 
+checkLemma n xs
  | length xs < n = (xs,[])
- | head(T.splitOn "+" (last (T.splitOn "\t" (xs!!n)))) == 
+ | head(T.splitOn "+" (last (T.splitOn "\t" (xs!!n)))) ==
    head(T.splitOn "+" (last (T.splitOn "\t" (xs!!(n-1))))) = checkLemma (n+1) xs
  | otherwise = splitAt n xs
 
@@ -127,16 +122,11 @@ splitEvery n list = first : (splitEvery n rest)
   where
     (first,rest) = checkLemma n list
 
-toText :: (T.Text, [T.Text ]) -> [T.Text]
-toText (k,xs) = reverse xs
+toText :: (T.Text, T.Text) -> T.Text
+toText (k,x) = T.append k (T.append "\t" x)
 
-toPairs :: [T.Text] -> [(T.Text ,[T.Text])]
-toPairs =
-  map (\s -> let p = T.splitOn "\t" s in (head(T.splitOn "+" (last p)), [s]))
-
-separate :: Int -> [T.Text] -> [[T.Text ]]
-separate n xs = splitEvery n $ concatMap toText $ M.toList $ M.fromListWith (++) $ toPairs xs
- 
+separate :: Int -> [(T.Text,T.Text)] -> [[T.Text]]
+separate n xs = splitEvery n (map toText (sortOn snd xs))
 
 
 -- newADJ recebe o diretório adjectives do MorphoBr e um diretório
@@ -144,19 +134,60 @@ separate n xs = splitEvery n $ concatMap toText $ M.toList $ M.fromListWith (++)
 newADJ :: FilePath -> FilePath -> IO [()]
 newADJ path outdir = do
   files <- listDirectory path
-  m <- createMap path files
-  mapM (aux outdir) (separate 18560 $ concatMap serialize (M.toList (fixA m)))
-   where 
-     aux outdir (x:xs) =
-       TO.writeFile (combine outdir ("adjectives-"++[T.head x]++[T.head (last xs)])) (T.intercalate "\n" (x:xs)) 
+  m <- createSimpMap path files
+  mapM (aux outdir) (splitEvery 19000 (map toText (sortOn snd $ concatMap serialize (M.toList $ fixA m))))
+   where
+    aux outdir (x:xs) =
+     TO.writeFile (combine outdir ("adjectives-"++(take 3 $ T.unpack x)++".dict")) 
+     (T.append (T.intercalate "\n" (x:xs)) "\n")
 
 -- newNouns recebe o diretório nouns do MorphoBr e um diretório
 -- onde será salva a versão compacta
 newNouns :: FilePath -> FilePath -> IO [()]
 newNouns path outdir = do
   files <- listDirectory path
-  m <- createMap path files
-  mapM (aux outdir) (separate 19040 $ concatMap serialize (M.toList (fixN m)))
-   where 
-     aux outdir (x:xs) =
-       TO.writeFile (combine outdir ("nouns-"++[T.head x]++[T.head (last xs)])) (T.intercalate "\n" (x:xs)) 
+  m <- createSimpMap path files
+  mapM (aux outdir) (splitEvery 19000 (map toText (sortOn snd $ concatMap serialize (M.toList $ fixN m))))
+   where
+    aux outdir (x:xs) =
+     TO.writeFile (combine outdir ("nouns-"++(take 3 $ T.unpack x)++".dict")) 
+     (T.append (T.intercalate "\n" (x:xs)) "\n") 
+
+
+---- Reconstrução a partir da versão simplificada
+
+getEntries :: (T.Text,[T.Text]) -> [T.Text]
+getEntries x
+ | not (member (T.pack "F") (snd x) || member (T.pack "M") (snd x)) &&
+     not (member (T.pack "SG") (snd x) || member (T.pack "PL") (snd x)) =
+        [T.intercalate "+" (snd x ++ [T.pack "F",T.pack "SG"]),
+         T.intercalate "+" (snd x ++ [T.pack "F",T.pack "PL"]),
+         T.intercalate "+" (snd x ++ [T.pack "M",T.pack "SG"]),
+         T.intercalate "+" (snd x ++ [T.pack "M",T.pack "PL"])]
+  | not (member (T.pack "PL") (snd x)) && not (member (T.pack "SG") (snd x)) =
+    [T.intercalate "+" (snd x ++ [T.pack "PL"]),
+     T.intercalate "+" (snd x ++ [T.pack "SG"])]
+  | not (member (T.pack "F") (snd x)) && not (member (T.pack "M") (snd x)) =
+    [T.intercalate "+" (init (snd x) ++ [T.pack "F"]++ [last (snd x)]),
+     T.intercalate "+" (init (snd x) ++ [T.pack "M"]++ [last (snd x)])]
+  | otherwise = [T.intercalate "+" (snd x)]
+
+expand :: [T.Text] -> [T.Text]
+expand = concatMap  (getEntries . aux)
+   where
+     aux s = do
+       let p = T.splitOn "\t" s in (head p, T.splitOn "+" (last p))
+
+createExpMap :: FilePath -> [FilePath] -> IO (M.Map T.Text [T.Text])
+createExpMap dir paths = do
+  dicts <- mapM (readF1 . combine dir) paths
+  return (M.map expand $ foldr (M.unionWith (++)) M.empty dicts)
+
+-- recebe um diretório com os arquivos simplificados e o path onde será salva a versão reconstruída 
+rebuild :: FilePath -> FilePath -> IO ()
+rebuild path outpath = do
+  files <- listDirectory path
+  m <- createExpMap path files
+  TO.writeFile outpath 
+   (T.intercalate "\n" (map toText (sortOn snd $ concatMap serialize (M.toList m))))
+
