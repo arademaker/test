@@ -191,3 +191,38 @@ rebuild path outpath = do
   TO.writeFile outpath 
    (T.intercalate "\n" (map toText (sortOn snd $ concatMap serialize (M.toList m))))
 
+
+---- formas sem plural ou singular
+
+
+readDict :: FilePath -> IO (M.Map T.Text [T.Text])
+readDict fn = do
+  content <- TO.readFile fn
+  return $ M.fromListWith (++) $ aux (T.lines content)
+ where
+   aux = map (\s -> let p = (T.splitOn "+" (last $ T.splitOn "\t" s)) in (head p, [s]))
+
+countPL :: [T.Text] -> Int
+countPL (x:xs)
+ | member (T.pack "PL") (T.splitOn "+" x) = 1 + countPL xs
+ | otherwise = countPL xs
+countPL [] = 0
+
+countSG :: [T.Text] -> Int
+countSG (x:xs)
+ | member (T.pack "SG") (T.splitOn "+" x) = 1 + countSG xs
+ | otherwise = countSG xs
+countSG [] = 0
+
+getDifNum :: (T.Text,[T.Text]) -> String
+getDifNum (lemma,xs)
+ | (countSG xs) /= (countPL xs) = (intercalate ", " (map T.unpack xs)) ++ "\n" 
+ | otherwise = ""
+
+-- recebe o diretório dos arquivos a serem checados e um path onde serão salvas as listas de entradas 
+-- que tem número de formas no plural diferente do número de formas no singular 
+checkNum :: FilePath -> FilePath -> IO ()
+checkNum path outpath = do
+  files <- listDirectory path
+  dicts <- mapM (readDict . combine path) files
+  writeFile outpath $ concatMap getDifNum (M.toList $ foldr (M.unionWith (++)) M.empty dicts)
