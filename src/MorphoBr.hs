@@ -15,8 +15,10 @@ import Data.List.Split (splitPlaces, chunksOf)
 import Data.Maybe ( fromJust, isNothing )
 
 
+---- Simplificação
+
 -- Na simplificação, para cada chave, os valores são ordenados e agrupados de acordo com o lema,
--- em seguida é feita a interseção dois a dois de cada grupo 
+-- em seguida é feita a interseção de cada grupo 
 
 member :: (Eq a) => a -> [a] -> Bool
 member x [] = False
@@ -138,6 +140,7 @@ newADJ path outdir = do
     aux outdir (x:xs) =
      TO.writeFile (combine outdir ("adjectives-"++(take 3 $ T.unpack x)++".dict")) 
      (T.append (T.intercalate "\n" (x:xs)) "\n")
+
 -- newNouns recebe o diretório nouns do MorphoBr e um diretório
 -- onde será salva a versão compacta
 newNouns :: FilePath -> FilePath -> IO [()]
