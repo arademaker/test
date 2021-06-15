@@ -138,7 +138,7 @@ newADJ path outdir = do
   mapM (aux outdir) (splitEvery 19000 (map toText (sortOn snd $ concatMap serialize (M.toList $ fixA m))))
    where
     aux outdir (x:xs) =
-     TO.writeFile (combine outdir ("adjectives-"++(take 3 $ T.unpack x)++".dict")) 
+     TO.writeFile (combine outdir ("adjectives-"++(take 3 $ T.unpack x)++".dict"))
      (T.append (T.intercalate "\n" (x:xs)) "\n")
 
 -- newNouns recebe o diretório nouns do MorphoBr e um diretório
@@ -150,8 +150,8 @@ newNouns path outdir = do
   mapM (aux outdir) (splitEvery 19000 (map toText (sortOn snd $ concatMap serialize (M.toList $ fixN m))))
    where
     aux outdir (x:xs) =
-     TO.writeFile (combine outdir ("nouns-"++(take 3 $ T.unpack x)++".dict")) 
-     (T.append (T.intercalate "\n" (x:xs)) "\n") 
+     TO.writeFile (combine outdir ("nouns-"++(take 3 $ T.unpack x)++".dict"))
+     (T.append (T.intercalate "\n" (x:xs)) "\n")
 
 
 ---- Reconstrução a partir da versão simplificada
@@ -188,7 +188,7 @@ rebuild :: FilePath -> FilePath -> IO ()
 rebuild path outpath = do
   files <- listDirectory path
   m <- createExpMap path files
-  TO.writeFile outpath 
+  TO.writeFile outpath
    (T.intercalate "\n" (map toText (sortOn snd $ concatMap serialize (M.toList m))))
 
 
@@ -214,9 +214,12 @@ countSG (x:xs)
  | otherwise = countSG xs
 countSG [] = 0
 
+getUniq :: [T.Text] -> [T.Text]
+getUniq xs = nub $ map (last . T.splitOn "\t") xs
+
 getDifNum :: (T.Text,[T.Text]) -> String
 getDifNum (lemma,xs)
- | (countSG xs) /= (countPL xs) = (intercalate ", " (map T.unpack xs)) ++ "\n" 
+ | (countSG $ getUniq xs) /= (countPL $ getUniq xs) = (intercalate ", " (map T.unpack xs)) ++ "\n"
  | otherwise = ""
 
 -- recebe o diretório dos arquivos a serem checados e um path onde serão salvas as listas de entradas 
